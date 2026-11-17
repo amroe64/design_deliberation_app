@@ -47,7 +47,8 @@ their **participant ID** (`P-HSKYA`). No names, emails or student IDs are ever a
 
 Every message, Mediator question, draft, recap, majority vote and final decision, in order, with:
 round, who, participant ID, text, picks, private or team, and for Mediator output **which mediator
-produced it** (stand-in or model name), and whether it fell back to the stand-in after an error.
+produced it** (stand-in or model name), and whether it fell back to the stand-in after an error
+(`mediator_error`, and `mediator_failure` = `timeout`, `network` or `model`).
 
 ## 4. Other tables
 
@@ -55,7 +56,26 @@ produced it** (stand-in or model name), and whether it fell back to the stand-in
 |---|---|---|
 | `sessions` | class session | Settings (class code, rounds, deliberation types, headcount rule) and live state |
 | `participants` | person | Participant ID, consent, team, role, nickname, late / help flags |
-| `teams` | team | Deliberation type, spare / non-consent / late flags, final set, and the full team state |
+| `teams` | team | Deliberation type, spare / non-consent / late flags, final set, and the full team state. With the real model, the state also holds `med_hist` (the Mediator's last 16 chat messages) and `ai_calls` (below). |
+
+### AI calls (`ai_calls.csv`, real model only)
+
+One row per request sent to the model, including retries and repair re-asks. Kept in each team's
+state, so it survives a restart.
+
+| Column | Meaning |
+|---|---|
+| `turn`, `round`, `kind` | Which Mediator turn (matches the AI status tab), round, and Draft / Question / Recap / Final design |
+| `purpose`, `attempt` | What was asked (e.g. `caucus draft`, `caucus draft (repair)`) and which try (1–4) |
+| `prompt` | The new message sent this time. Earlier messages are the rows before it for the same team (`history_msgs` says how many were sent along). |
+| `reply`, `reasoning` | The model's answer, and its reasoning text if the server returns it |
+| `finish_reason` | `stop` (finished) or `length` (ran out of `max_tokens`, often from reasoning) |
+| `model`, `model_returned`, `max_tokens`, `temperature` | What was asked for, and the model name the server says answered |
+| `tokens_in`, `tokens_out`, `seconds` | From the server's usage report, and the wall time of the request |
+| `error` | For failed requests: the error type, HTTP status and ARC's message |
+
+results.csv also has `mediator_fallbacks`: how many of the team's Mediator turns the stand-in
+answered. The simulation excludes failed runs. Exclude these teams the same way.
 
 ## 5. Scores the app works out from the log
 
@@ -101,5 +121,5 @@ the gate re-applied. Report how often the coders agreed with each other and with
 ## 7. Where to find it
 
 - **Admin → People** → click any ID: that person's full timeline, time per step, and totals.
-- **Admin → Results → Downloads:** results, facts, messages, participants and all-events CSVs, everything as JSON, and the whole `.sqlite3` file.
+- **Admin → Results → Downloads:** results, facts, messages, participants, all-events and AI-calls CSVs, everything as JSON, and the whole `.sqlite3` file.
 - Or open `data/session.sqlite3` directly, for example in DB Browser for SQLite or with `pandas.read_sql`.

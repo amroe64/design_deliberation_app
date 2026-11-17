@@ -14,11 +14,21 @@ import secrets
 import time
 from pathlib import Path
 
+# Settings can live in team_session/.env (ARC_API_KEY etc.). Shell variables win. Keep .env out of git.
+_ENV = Path(__file__).resolve().parent.parent / ".env"
+if _ENV.exists():
+    for _line in _ENV.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import content as C
+from . import mediator as M
 from . import rules
 from .db import DB
 from .game import Game
@@ -215,6 +225,19 @@ async def admin_act(request: Request, body: dict):
             else:
                 msg = f"Simulation running at {game.auto_speed:g}x." if game.auto_speed else "Simulation stopped."
             game.admin_dirty = True
+        elif typ == "mediator":
+            choice = str(body.get("model") or "")
+            if game.mediator_locked():
+                msg = "The Mediator is locked because teams have been formed. Start a new session to change it."
+            elif not choice:
+                msg = "Pick a model first."
+            else:
+                try:
+                    game.choose_mediator(choice)
+                    msg = "Mediator set to the stand-in (no AI)." if choice == M.STANDIN else f"Mediator set to {choice}."
+                except ValueError as e:
+                    msg = str(e)
+            game.admin_dirty = True
         elif typ == "form" and game.lobby_open:
             n, conds = game.form_teams()
             msg = f"Formed {len(game.teams)} teams from {n} students" + (
@@ -328,6 +351,43 @@ async def admin_ai(request: Request):
         return game.ai_view()
 
 
+@app.post("/api/admin/ai_test")
+async def admin_ai_test(request: Request, body: dict = None):
+    """Pre-class check: is the model on the server, and how long does one short reply take?
+    With {"model": ...}, tries that model without switching to it (Setup tab)."""
+    need_admin(request)
+    model = (body or {}).get("model")
+    if model == M.STANDIN:
+        r = await M.StandIn().test()
+    elif model and model != game.mediator_choice():
+        llm = game.get_llm()
+        r = await llm.test(model) if llm else {"ok": False, "model": model, "error": "This server has no ARC key."}
+    else:
+        r = await game.mediator.test()
+        game.stats["ai_test"] = r                      # the current Mediator's last check shows on the AI status tab
+    r["at"] = time.time()
+    game.admin_dirty = True
+    return r
+
+
+@app.get("/api/admin/models")
+async def admin_models(request: Request):
+    """What the Setup tab's model picker needs: the models ARC lists right now, and the budgets the app would use."""
+    need_admin(request)
+    llm = game.get_llm()
+    out = {"available": llm is not None, "current": game.mediator_choice(), "locked": game.mediator_locked(),
+           "note": getattr(game, "mediator_note", ""), "standin": M.STANDIN,
+           "catalog": {k: {"max_tokens": v[0], "timeout": v[1]} for k, v in M.MODELS.items()},
+           "unknown": {"max_tokens": M.UNKNOWN_MODEL[0], "timeout": M.UNKNOWN_MODEL[1]},
+           "simulated": sorted(M.SIMULATED), "models": [], "error": None}
+    if llm:
+        try:
+            out["models"] = await llm.list_models()
+        except Exception as e:  # noqa: BLE001
+            out["error"] = M._err_text(e)[:300]
+    return out
+
+
 @app.get("/api/admin/feed")
 async def admin_feed(request: Request):
     need_admin(request)
@@ -354,7 +414,8 @@ async def admin_person(request: Request, pid: str):
 def csv_response(rows, name):
     buf = io.StringIO()
     if rows:
-        w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+        cols = list(dict.fromkeys(k for r in rows for k in r))      # every column any row has, in first-seen order
+        w = csv.DictWriter(buf, fieldnames=cols, restval="")
         w.writeheader()
         w.writerows(rows)
     return Response(buf.getvalue(), media_type="text/csv",
@@ -400,8 +461,18 @@ async def export(request: Request, name: str, consent_only: int = 1):
             keep = {s["pid"] for s in game.seats.values() if not co or s["consent"]}
             return csv_response([{**{k: v for k, v in e.items() if k != "details"}, "details": json.dumps(e["details"])}
                                  for e in db.events(game.sid) if e["pid"] in keep], "events")
+        if name == "ai_calls.csv":
+            rows = []
+            for T in sorted(game.teams.values(), key=lambda t: t["id"]):
+                if not ok(T):
+                    continue
+                for c in T.get("ai_calls", []):
+                    rows.append({"session": game.sid, "team": T["id"], "condition": T["cond"], **{k: ("" if v is None else v) for k, v in c.items()}})
+            return csv_response(rows, "ai_calls")
         if name == "all.json":
-            data = {"session": game.sid, "settings": game.settings, "teams": [T for T in game.teams.values() if ok(T)],
+            data = {"session": game.sid, "settings": game.settings,
+                    "mediator": game.mediator.settings() if hasattr(game.mediator, "settings") else {"model": game.mediator.name},
+                    "teams": [T for T in game.teams.values() if ok(T)],
                     "participants": game.participants_rows(co)}
             return Response(json.dumps(data, indent=1), media_type="application/json",
                             headers={"Content-Disposition": f'attachment; filename="{game.sid}_all.json"'})
@@ -418,7 +489,7 @@ async def export(request: Request, name: str, consent_only: int = 1):
 import re as _re, shutil as _shutil, zipfile as _zipfile, pathlib as _pathlib
 SAVED_DIR = _pathlib.Path(DB_PATH).parent / "saved"
 _SAFE = _re.compile(r"^[A-Za-z0-9_\-]+$")
-_EXPORTS = ["results.csv", "facts.csv", "messages.csv", "participants.csv", "events.csv", "coding_all.csv", "coding_sample.csv", "all.json"]
+_EXPORTS = ["results.csv", "facts.csv", "messages.csv", "participants.csv", "events.csv", "ai_calls.csv", "coding_all.csv", "coding_sample.csv", "all.json"]
 
 
 def _saved_dir(sid):

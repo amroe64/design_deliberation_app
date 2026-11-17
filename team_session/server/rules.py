@@ -190,17 +190,18 @@ def neutral_recap(log, rnd, active_roles):
 
 
 def majority_set(log, rounds, n_active):
-    """Features at least 2 of 3 picked in the last round. Over budget -> drop the lowest
-    table value per dollar until it fits. (Prototype rule: match domain.majority_bundle.)"""
+    """Features at least 2 of 3 picked in the last round. Over budget: drop the item with the FEWEST
+    votes first, ties broken by dropping the most expensive, then by id. Same as
+    domain.majority_bundle in the simulation (deterministic, so the rule itself adds no variance)."""
     need = min(2, n_active)
-    count = {}
+    votes = {}
     for m in posts(log, rounds):
         for i in m["set"]:
-            count[i] = count.get(i, 0) + 1
-    s = sort_ids([i for i, c in count.items() if c >= need])
-    while cost(s) > BUDGET:
-        worst = sorted(s, key=lambda i: FEAT[i]["shared"] / FEAT[i]["price"])[0]
-        s = [x for x in s if x != worst]
+            votes[i] = votes.get(i, 0) + 1
+    s = sort_ids([i for i, c in votes.items() if c >= need])
+    while s and cost(s) > BUDGET:
+        drop = sorted(s, key=lambda i: (votes[i], -FEAT[i]["price"], i))[0]
+        s = [x for x in s if x != drop]
     return s
 
 
@@ -432,7 +433,9 @@ def team_result(T, session_id, pid_of):
             **points(T, ff),
             "accepts": sum(1 for r in active if T["roles"][r].get("endorse") is True),
             "talked_outside_app": int(any(x in ("A little", "A lot") for x in leak)),
-            "closed_by_researcher": int(any(e.get("closed_by_researcher") for e in T["log"]))}
+            "closed_by_researcher": int(any(e.get("closed_by_researcher") for e in T["log"])),
+            # turns where the real model failed and the stand-in answered; exclude these teams from the primary analysis
+            "mediator_fallbacks": sum(1 for e in T["log"] if e.get("mediator_error"))}
 
 
 def coding_rows(T, session_id, pid_of):

@@ -573,7 +573,7 @@
   .w-ch .w-cond{display:inline-flex;align-items:center}
 
   /* ---- grouped tabs + one-line help ---- */
-  .tabs2{display:flex;flex-wrap:wrap;gap:10px 22px;margin:4px 0 6px}
+  .tabs2{display:flex;flex-wrap:wrap;gap:10px 22px;margin:4px 0 16px}
   .tg{display:flex;flex-direction:column;gap:5px}
   .tg-l{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-left:4px}
   .tg-b{display:flex;flex-wrap:wrap;gap:6px}
@@ -938,7 +938,7 @@
   #app.anim-in :is(.fb-t,.ws-mt) i,#app.anim-rows :is(.fb-t,.ws-mt) i,#app.anim-in .tr-steps i{transform-origin:left center;animation:barGrow .6s cubic-bezier(.2,.7,.2,1) both .1s}
   @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;transition-duration:.01ms !important} }
 
-  /* ---- v9: AI backend tab ---- */
+  /* ---- v9: AI status tab ---- */
   .ai-note{display:flex;gap:10px;align-items:flex-start;background:#fdf1d6;border:1px solid #f0d58a;color:#5c4400;border-radius:14px;padding:11px 14px;margin-bottom:12px;font-size:14px;line-height:1.45}
   .ai-note .ic{flex:none;margin:3px 0 0}
   .ai-stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
@@ -973,6 +973,184 @@
   .ai-n em{font-style:normal;font-size:11px;color:var(--muted);margin-left:4px}
   .ai-err{flex:1 0 100%;font-size:12.5px;color:#8f2f40}
   @media (max-width:900px){ .ai-grid{grid-template-columns:1fr} .ai-row{border-radius:16px} }
+  .ic-screen{--m:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222.5%22%20y%3D%223.5%22%20width%3D%2219%22%20height%3D%2213%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M8%2020.5h8M12%2016.5v4%22%2F%3E%3C%2Fsvg%3E")}
+  .projbar{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid #255E4B;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+  .pj-ic{width:40px;height:40px;border-radius:10px;background:#E4EEEA;color:#255E4B;display:grid;place-items:center;flex:none}
+  .pj-ic .ic{margin:0;width:22px;height:22px}
+  .pj-t{flex:1;min-width:0}.pj-t>b{display:block;font-size:15px}.pj-t small{color:var(--muted);font-size:13px}
+  .pj-go{display:inline-flex;align-items:center;justify-content:center;background:#255E4B;color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;text-decoration:none;white-space:nowrap;cursor:pointer}
+  .pj-go:hover{background:#1d4a3b}
+  @media (max-width:520px){.projbar{flex-wrap:wrap}.pj-go{width:100%}}
+  /* ---------- projector: big screen ---------- */
+  html.is-proj main#app{max-width:1500px;padding:20px 28px 40px}
+  html.is-proj .sitefoot{margin-top:0}
+  .pj-ctl{position:fixed;right:14px;bottom:14px;z-index:20;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;background:rgba(42,46,59,.88);padding:6px;border-radius:12px;max-width:calc(100% - 28px);opacity:0;transition:opacity .4s}
+  body.pj-awake .pj-ctl,.pj-ctl:focus-within,.pj-ctl:hover{opacity:1}
+  .pj-cb{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#fff;border:0;border-radius:8px;padding:7px 11px;font:inherit;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer}.pj-cb:hover{background:rgba(255,255,255,.14)}
+  .pj-cb .ic{margin:0}
+  .pj-cb.on{background:#255E4B;color:#fff}
+  .pj-seg{background:rgba(255,255,255,.1)}.pj-seg button{font-size:14px;padding:6px 11px;color:#fff}.pj-seg button.on{background:#255E4B;color:#fff}.pj-hint{color:#FFE08A;font-size:14px;padding:0 8px}
+  .pj{display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;padding:10px 0 20px}
+  .pj-kick{font-size:22px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#255E4B}
+  .pj-big{font-family:'Source Serif 4',Cambria,Georgia,serif;font-weight:700;font-size:clamp(34px,4.6vw,64px);line-height:1.12;color:#2A2E3B;max-width:1200px}
+  .pj-sub{font-size:clamp(20px,2.2vw,30px);color:var(--muted)}
+  .pj-hl{color:#255E4B}
+  .pj-joinrow{display:flex;flex-wrap:wrap;gap:48px;align-items:center;justify-content:center}
+  .pj-join #qr{background:#fff;padding:18px;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+  .pj-how{text-align:left}
+  .pj-l{font-size:26px;color:var(--muted)}
+  .pj-url{font-size:clamp(30px,3.4vw,48px);font-weight:700;color:#2A2E3B;margin:2px 0 18px;word-break:break-all}
+  .pj-code{font-family:'Source Serif 4',Cambria,Georgia,serif;font-size:clamp(72px,9vw,128px);font-weight:700;letter-spacing:.12em;color:#255E4B;line-height:1}
+  .pj-count{font-size:34px;color:#2A2E3B}.pj-count b{font-size:48px;color:#255E4B;margin-right:8px}
+  .pj-banner{display:flex;align-items:center;gap:14px;background:#FFF4CC;border:2px solid #f0d58a;color:#4a3b00;border-radius:16px;padding:16px 24px;font-size:clamp(22px,2.4vw,32px);font-weight:600}
+  .pj-banner .ic{margin:0;width:30px;height:30px;flex:none}
+  .pj-bar{width:min(1100px,100%);height:34px;background:#dde1e8;border-radius:999px;overflow:hidden}
+  .pj-bar i{display:block;height:100%;background:#255E4B;border-radius:999px;transition:width 1s}
+  .pj-barl{width:min(1100px,100%);display:flex;justify-content:space-between;font-size:24px;margin-top:-12px;color:var(--muted)}.pj-barl b{color:#2A2E3B}
+  .pj-where{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+  .pj-where span{background:#fff;border-radius:14px;padding:10px 18px;font-size:20px;color:var(--muted)}.pj-where b{font-size:28px;color:#2A2E3B;margin-right:8px}
+  .pj-teams{width:min(1300px,100%);display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .pj-team{background:#fff;border-radius:12px;padding:10px 12px;text-align:left}
+  .pj-team span{display:flex;align-items:center;gap:6px;font-size:19px;font-weight:600;color:#2A2E3B;margin-bottom:8px}
+  .pj-team span .ic{margin:0;color:#255E4B}
+  .pj-team > i{display:block;height:10px;border-radius:999px;background:linear-gradient(90deg,#255E4B var(--p),#dde1e8 var(--p))}
+  .pj-team.done{background:#E4EEEA}
+  .pj-tip{display:flex;align-items:center;gap:14px;background:#2A2E3B;color:#fff;border-radius:16px;padding:18px 28px;font-size:clamp(22px,2.4vw,32px);max-width:1200px}
+  .pj-tip .ic{margin:0;width:28px;height:28px;flex:none;color:#9fd3bf}
+  .pj-clock{font-size:20px;color:var(--muted)}
+  .pj-toast{display:flex;align-items:center;gap:12px;background:#255E4B;color:#fff;border-radius:999px;padding:14px 30px;font-size:clamp(24px,2.6vw,36px);font-weight:700;animation:pjPop .5s cubic-bezier(.2,.7,.2,1.3) both}
+  .pj-toast .ic{margin:0;width:30px;height:30px}
+  @keyframes pjPop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+  .pj-cmp,.pj-types{width:min(1100px,100%);display:flex;flex-direction:column;gap:12px}
+  .pj-cr{display:grid;grid-template-columns:minmax(200px,380px) 1fr 90px;gap:16px;align-items:center;font-size:clamp(18px,1.9vw,26px);text-align:left;color:#2A2E3B}
+  .pj-cr b{text-align:right}
+  .pj-cb2{height:26px;background:#dde1e8;border-radius:999px;overflow:hidden}
+  .pj-cb2 i{display:block;height:100%;background:#8b91a0;border-radius:999px}
+  .pj-cr.top .pj-cb2 i{background:#2A2E3B}
+  .pj-cr.you{font-weight:700}.pj-cr.you .pj-cb2 i{background:#255E4B}.pj-cr.you b{color:#255E4B}
+  .pj-sw{display:inline-block;width:16px;height:16px;border-radius:4px;margin-right:10px;vertical-align:-1px}
+  .pj-dots{width:min(1100px,100%)}
+  .pj-dl{font-size:20px;color:var(--muted);margin-bottom:10px}
+  .pj-scale{position:relative;height:56px;border-bottom:3px solid #c9ced8;margin:0 8px 30px}
+  .pj-scale i{position:absolute;bottom:6px;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:#255E4B;opacity:.75;border:2px solid #fff}
+  .pj-scale span{position:absolute;top:62px;transform:translateX(-50%);font-size:18px;color:var(--muted)}
+  .pj-facts{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+  .pj-fact{background:#fff;border-radius:16px;padding:18px 26px;min-width:240px;max-width:360px}
+  .pj-fact b{display:block;font-family:'Source Serif 4',Cambria,Georgia,serif;font-size:52px;color:#255E4B;line-height:1.1}
+  .pj-fact span{font-size:20px;color:var(--muted)}
+  .pj-lesson{font-size:clamp(22px,2.4vw,32px);font-weight:600;color:#2A2E3B;max-width:1100px}
+  .pj-opt{width:min(1200px,100%)}
+  .pj-chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .pj-chips span{background:#fff;border:2px solid #255E4B;border-radius:12px;padding:10px 16px;font-size:20px;color:#2A2E3B}.pj-chips b{color:#255E4B;margin-right:8px}
+  .pj-thanks{font-family:'Source Serif 4',Cambria,Georgia,serif;font-size:clamp(28px,3vw,44px);font-weight:700;color:#255E4B}
+  @media (max-width:700px){.pj-cr{grid-template-columns:1fr 60px}.pj-cr .pj-cb2{grid-column:1 / -1;grid-row:2}}
+  /* AI status: settings card spans two rows; red rows for things to fix */
+  .ai-grid > .card:first-child{grid-row:span 2}
+  .ai-kv.bad b{color:var(--bad)}
+  @media (max-width:900px){ .ai-grid > .card:first-child{grid-row:auto} }
+  #medsel{width:auto;min-width:240px;margin:0;padding:9px 38px 9px 14px;font-size:15px;background-position:right 14px center}
+  .ic-sliders{--m:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%206h9M17%206h3M4%2012h3M11%2012h9M4%2018h11M19%2018h1%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%226%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2212%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2218%22%20r%3D%222%22%2F%3E%3C%2Fsvg%3E")}
+  .ic-gauge{--m:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3.5%2017a8.5%208.5%200%201%201%2017%200%22%2F%3E%3Cpath%20d%3D%22M12%2017l4.5-5.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2217%22%20r%3D%221.3%22%2F%3E%3C%2Fsvg%3E")}
+  /* ---- AI status: one color per section, status strip, wait bars ---- */
+  .ai-sec{border-top:4px solid var(--sc);transition:box-shadow .2s}
+  .ai-sec:hover{box-shadow:0 6px 20px rgba(31,35,43,.08)}
+  .ai-h{display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+  .ai-h h3{margin:0;flex:1}
+  .ai-hic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,#fff)}
+  .ai-hic .ic{margin:0;width:18px;height:18px}
+  .ai-hr{font-size:13px;color:var(--muted)}
+  .ai-hero{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#2A2E3B;color:#fff;border-radius:16px;padding:14px 18px;margin-bottom:12px}
+  .ai-hero.idle{background:#4a4f5c}
+  .ai-light{width:14px;height:14px;border-radius:50%;flex:none;background:#b4b9c5;box-shadow:0 0 0 4px rgba(255,255,255,.08)}
+  .ai-hero.ok .ai-light,.ai-hero.live .ai-light{background:#44AA99;animation:aiGlow 1.8s ease-in-out infinite}
+  .ai-hero.live .ai-light{background:#e0a400;animation-name:aiGlowW}
+  .ai-hero.bad .ai-light{background:#CC6677;animation:aiGlowB 1.2s ease-in-out infinite}
+  .ai-hero-t{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}
+  .ai-hero-t b{font-size:17px}
+  .ai-hero-t span{font-size:13px;color:#c9cdd8;line-height:1.4}
+  .ai-hero-c{display:flex;gap:8px;flex-wrap:wrap}
+  .ai-hero-c span{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+  .ai-hero-c span.bad{background:rgba(204,102,119,.35)}
+  .ai-hero-c .ic{margin:0;width:14px;height:14px}
+  .ai-stat{position:relative;overflow:hidden}
+  .ai-stat > .ic{position:absolute;right:12px;top:12px;width:18px;height:18px;margin:0;color:#b4b9c5}
+  .ai-stat.live{box-shadow:inset 0 -3px 0 #44AA99}.ai-stat.live > .ic{color:#255E4B;animation:tlpulse 1s infinite}
+  .ai-stat.warn{box-shadow:inset 0 -3px 0 #e0a400}.ai-stat.warn > .ic{color:#9a6b00}
+  .ai-stat.bad{box-shadow:inset 0 -3px 0 #CC6677}.ai-stat.bad > .ic{color:#b23b4e}
+  .ai-stat.good b{color:#255E4B}
+  .ai-health{display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:#E1E4EB;margin:0 0 8px}
+  .ai-health i{background:#44AA99;transform-origin:left}.ai-health i.bad{background:#CC6677}
+  .ai-waits{margin-top:12px;padding:12px 14px;border-radius:14px;background:#F6F7FA}
+  .ai-waits-h{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .ai-cut{display:inline-flex;align-items:center;gap:6px}.ai-cut u{display:inline-block;width:2px;height:12px;background:#2A2E3B;border-radius:2px}
+  .ai-wb{display:grid;grid-template-columns:150px 1fr 84px;gap:12px;align-items:center;padding:7px 0}
+  .ai-wb-l b,.ai-wb-v b{display:block;font-size:14px}
+  .ai-wb-l small,.ai-wb-v small{font-size:12px;color:var(--muted)}
+  .ai-wb-t{position:relative;height:14px;background:#E1E4EB;border-radius:999px}
+  .ai-wb-t i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#44AA99;transform-origin:left}
+  .ai-wb.bad .ai-wb-t i{background:linear-gradient(90deg,#44AA99,#e0a400 55%,#CC6677)}
+  .ai-wb-t u{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:#2A2E3B;border-radius:2px}
+  .ai-wb-v{text-align:right}.ai-wb.bad .ai-wb-v b,.ai-wb.bad .ai-wb-v small{color:#b23b4e}
+  .ai-row.network,.ai-row.model{border-color:#e9b8c0;background:#fdf6f7;border-radius:18px}
+  @keyframes aiGlow{50%{box-shadow:0 0 0 7px rgba(68,170,153,.25)}}
+  @keyframes aiGlowW{50%{box-shadow:0 0 0 7px rgba(224,164,0,.25)}}
+  @keyframes aiGlowB{50%{box-shadow:0 0 0 7px rgba(204,102,119,.3)}}
+  @keyframes aiPop{from{transform:scale(.4) rotate(-15deg);opacity:0}to{transform:none;opacity:1}}
+  @keyframes aiRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  #app.anim-in .ai-hero{animation:fadeUp .35s cubic-bezier(.2,.7,.2,1) both}
+  #app.anim-in .ai-hic{animation:aiPop .5s cubic-bezier(.2,.7,.2,1.4) both .12s}
+  #app.anim-in .ai-wb-t i,#app.anim-in .ai-health i{animation:barGrow .8s cubic-bezier(.2,.7,.2,1) both .2s}
+  #app.anim-in .ai-bars i{transform-origin:bottom;animation:aiRise .5s cubic-bezier(.2,.7,.2,1) both var(--d,0ms)}
+  @media (max-width:600px){ .ai-wb{grid-template-columns:1fr 70px} .ai-wb-t{grid-column:1 / -1;grid-row:2} }
+  @media (prefers-reduced-motion:reduce){ .ai-light,.ai-stat > .ic,#app.anim-in .ai-hero,#app.anim-in .ai-hic,#app.anim-in .ai-wb-t i,#app.anim-in .ai-health i,#app.anim-in .ai-bars i{animation:none !important} }
+  /* ---- Section look for every admin tab (matches the AI status tab) ---- */
+  .card.sec{border-top:4px solid var(--sc);transition:box-shadow .2s}
+  .card.sec:hover{box-shadow:0 6px 20px rgba(31,35,43,.08)}
+  .sec-h{display:flex;align-items:center;gap:10px;min-width:0}
+  .card.sec > .sec-h{margin:0 0 10px}
+  .sec-h h3{margin:0 !important}
+  .sec-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,#fff)}
+  .sec-ic .ic{margin:0;width:17px;height:17px}
+  .stat.sec-stat{position:relative;overflow:hidden}
+  .stat.sec-stat > .ic{position:absolute;right:12px;top:12px;width:18px;height:18px;margin:0;color:#b4b9c5}
+  #app.anim-in .sec-ic{animation:aiPop .5s cubic-bezier(.2,.7,.2,1.4) both .12s}
+  @media (prefers-reduced-motion:reduce){ #app.anim-in .sec-ic,.sec-hero .ai-light{animation:none !important} }
+  #app .ch-card{border-top:4px solid var(--brand)}
+  /* ---- Results: the four steps as step cards, extra checks as a shaded grid (no sideways scroll) ---- */
+  .fn-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:4px 0 12px;font-size:13px;color:#3b4150}
+  .fn-legend span{display:inline-flex;align-items:center;gap:6px;background:#F2F4F7;border-radius:999px;padding:4px 10px 4px 5px;font-weight:600}
+  .fn-legend span b{width:20px;height:20px;border-radius:50%;background:#255E4B;color:#fff;display:grid;place-items:center;font-size:11.5px}
+  .fn-arrow{display:inline-block;width:14px;height:2px;background:#c5cad6;position:relative}
+  .fn-arrow::after{content:"";position:absolute;right:-2px;top:-3px;border:4px solid transparent;border-left-color:#c5cad6;border-right:0}
+  .fn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .fn-card{border:1.5px solid #e3e6ed;border-top:4px solid var(--cc);border-radius:14px;padding:12px 14px;background:#fff}
+  .fn-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .fn-h small{margin-left:auto;color:var(--muted);font-size:12px}
+  .fn-dot{width:10px;height:10px;border-radius:50%;background:var(--cc);flex:none;display:inline-block}
+  .fn-cols{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:end}
+  .fn-col{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;min-width:0}
+  .fn-v{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+  .fn-bar{width:100%;max-width:44px;height:96px;background:#EEF0F4;border-radius:8px;display:flex;align-items:flex-end;overflow:hidden}
+  .fn-bar i{display:block;width:100%;background:var(--cc);border-radius:8px 8px 0 0;opacity:.9;transform-origin:bottom}
+  .fn-col small{font-size:11.5px;color:#3b4150;font-weight:600}
+  .fn-col em{font-style:normal;font-size:11px;color:var(--muted);white-space:nowrap}
+  .fn-col em u{text-decoration:none;color:#b23b4e;font-weight:700}
+  .fn-foot{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .fn-foot b{color:var(--ink)}
+  .hm{display:grid;gap:4px;margin-top:6px;font-size:13px}
+  .hm-h{font-weight:700;padding:4px 6px;display:flex;align-items:center;gap:6px;min-width:0}
+  .hm-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hm-r{display:flex;align-items:center;gap:4px;padding:6px 6px 6px 0;color:#3b4150;font-weight:600;min-width:0}
+  .hm-cell{border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;min-height:44px;min-width:0;color:#1f232b;
+    background:#e3efec;background:color-mix(in srgb,#44AA99 calc(var(--p) * 0.8%),#F2F4F7)}
+  .hm-cell.hi b{color:#123c34}
+  .hm-cell b{font-size:14px;font-variant-numeric:tabular-nums}
+  .hm-cell small{font-size:11px;opacity:.85}
+  .hm-cell.na{background:repeating-linear-gradient(135deg,#F4F5F8 0 6px,#ECEEF2 6px 12px);color:#9aa0ad;align-items:center}
+  #app.anim-in .fn-bar i{animation:aiRise .6s cubic-bezier(.2,.7,.2,1) both var(--d,0ms)}
+  #app.anim-in .hm-cell{animation:fadeUp .35s both}
+  @media (max-width:520px){ .hm{font-size:12px} .hm-cell{padding:5px 6px} .hm-cell small{display:none} }
+  @media (prefers-reduced-motion:reduce){ #app.anim-in .fn-bar i,#app.anim-in .hm-cell{animation:none !important} }
 </style>
 </head>
 <body>
@@ -1110,7 +1288,7 @@ const TIPS = {
   rounds:'How many times each team posts before the final decision. The simulation uses 3; the class plan uses 2.',
   types:'Which ways of running the discussion to use. Teams get them evenly, in a random order.',
   headcount:'If fewer students than this join, the app uses only the types you tick here, so each type still gets enough teams.',
-  mediator:'Which Mediator is running: the simple rules version for testing, or the real AI.',
+  mediator:'Which Mediator runs this session: the rule-based stand-in for testing, or a model on VT ARC. Pick it before forming teams; it stays fixed for the session.',
   new_session:'Starts over with an empty lobby and a new session ID. Old data stays saved.',
   /* results */
   consent_only:'When ticked, the tables only count teams where everyone said yes to sharing their data.',
@@ -1305,15 +1483,16 @@ function neutralRecap(T, round){
   });
   return t.trim();
 }
-/* Majority vote (2 of 3) over last-round picks; repair by dropping lowest table value per dollar.
-   (Prototype rule; match domain.majority_bundle's repair rule for the real version.) */
+/* Majority vote (2 of 3) over last-round picks. */
 function majoritySet(T){
-  const last = posts(T, S.settings.rounds), count = {}, need = Math.min(2, activeRoles(T).length);
-  last.forEach(m => m.set.forEach(id => count[id] = (count[id]||0) + 1));
-  let set = sortIds(Object.keys(count).filter(id => count[id] >= need));
-  while (cost(set) > BUDGET){
-    const worst = [...set].sort((a,b) => F(a).shared/F(a).price - F(b).shared/F(b).price)[0];
-    set = set.filter(x => x !== worst);
+  /* Over budget: drop the item with the fewest votes first, then the most expensive, then by id.
+     Same as domain.majority_bundle in the simulation. */
+  const last = posts(T, S.settings.rounds), votes = {}, need = Math.min(2, activeRoles(T).length);
+  last.forEach(m => m.set.forEach(id => votes[id] = (votes[id]||0) + 1));
+  let set = sortIds(Object.keys(votes).filter(id => votes[id] >= need));
+  while (set.length && cost(set) > BUDGET){
+    const drop = [...set].sort((a,b) => (votes[a] - votes[b]) || (F(b).price - F(a).price) || (a < b ? -1 : 1))[0];
+    set = set.filter(x => x !== drop);
   }
   return set;
 }
@@ -2132,7 +2311,6 @@ function archBanner(a){
 function savedTabHTML(o){
   const L = o.list;
   return `${o.arch ? '' : `<div class="card"><h3 style="margin-top:0">Save this session</h3>
-      <p class="small muted">Makes a folder with everything in this session as it is right now: charts, results, every player's screen and log, and all the data files. You can open it later and look around with the same tabs.</p>
       <div class="inline"><input type="text" id="savename" maxlength="60" value="${esc(o.defName)}" aria-label="Name for the saved session" style="flex:1;min-width:220px;margin:0">
         <button class="mini dark" data-act="savesess" ${o.canSave ? '' : 'disabled title="Nothing to save yet"'}><i class="ic ic-folder"></i>Save as a folder</button></div>
       ${o.canSave ? '' : '<p class="small muted" style="margin:8px 0 0">Nothing to save yet. Students need to join first.</p>'}</div>`}
@@ -2189,7 +2367,7 @@ const PP_GET = {id:p => p.pid, role:p => p.label || '~', team:p => p.team == nul
 function broadcastCard(o){
   const quick = ['Please stay in the app. No talking out loud.', 'Read every message before you send.', 'Tap Need help if something is not working.'];
   return `<div class="card bc-card"><div class="bc-head"><span class="bc-ic"><i class="ic ic-mega"></i></span>
-      <div class="bc-t"><h3>Message everyone${ti('broadcast')}</h3><p>Your message shows as a yellow banner at the top of every phone until you clear it. Time reminders go out on their own.</p></div>
+      <div class="bc-t"><h3>Message everyone${ti('broadcast')}</h3></div>
       <span class="bc-pause"><button class="mini" data-act="pause">${o.paused ? '<i class="ic ic-play"></i>Resume everyone' : '<i class="ic ic-pause"></i>Pause everyone'}</button>${ti('pause')}</span></div>
     <form data-form="bcast" class="bc-form"><input type="text" id="bcast" maxlength="160" placeholder="Type a message for every phone" aria-label="Message for every phone"><button type="submit" class="bc-send"><i class="ic ic-send"></i>Send</button></form>
     <div class="bc-quick"><small>Or send a ready-made one</small>${quick.map(m => `<button type="button" data-act="bc" data-msg="${esc(m)}">${esc(m)}</button>`).join('')}</div>
@@ -2208,7 +2386,7 @@ function broadcastCard(o){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', first); else first();
 })();
 
-/* ---------- v9 shared: the "AI backend" tab ---------- */
+/* ---------- v9 shared: the "AI status" tab ---------- */
 const AI_OPTS = [['new','Newest'],['slow','Slowest'],['waited','Longest wait'],['tokens','Most tokens']];
 const AI_GET = {new:x => x.i, slow:x => x.model_s, waited:x => x.wait_s, tokens:x => x.tok_in + x.tok_out};
 ['new','slow','waited','tokens'].forEach(k => SORT_DESC.add(k));
@@ -2227,51 +2405,98 @@ function aiAgg(L){
     series:Array.from({length:mins}, (_, m) => perMin[m] || 0), peakCalls:Math.max(0, ...Object.values(perMin)), peakTok:Math.max(0, ...Object.values(tokMin))};
 }
 /* D = {config, now, totals, log, session} */
+/* Reply times measured on ARC's shared service with gpt-oss-120b-thinking-low (design_deliberation_A-v2.1):
+   quick = results_brubaker_original (~7-8 s per call), busy = the later results/ runs (~2 min per call). */
+const AI_SPEED = {quick:8, busy:120};
+/* One color and icon per section, so the sections are easy to tell apart. */
+const AI_SEC = {test:['#255E4B','ic-pulse'], setup:['#2A2E3B','ic-sliders'], req:['#2B7F72','ic-send'], load:['#4C5BA8','ic-gauge'], plan:['#9A6400','ic-team3'], turns:['#5b6070','ic-list']};
+const aiHead = (k, title, right) => `<div class="ai-h"><span class="ai-hic"><i class="ic ${AI_SEC[k][1]}"></i></span><h3>${title}</h3>${right ? `<span class="ai-hr">${right}</span>` : ''}</div>`;
+const aiCard = (k, cls, inner) => `<div class="card ai-sec ${cls || ''}" style="--sc:${AI_SEC[k][0]}">${inner}</div>`;
+const aiTestCard = (T, busy) => aiCard('test', 'ai-test', `${aiHead('test', 'Before class: test the AI', `<button class="mini dark" data-act="aitest" ${busy ? 'disabled' : ''}><i class="ic ic-pulse"></i>${busy ? 'Testing…' : 'Test the AI'}</button>`)}
+    <p class="small muted" style="margin:0">Sends one short real request from this server. Run it on the lecture-day network.</p>
+  ${T ? `<div class="ai-verdict ${T.ok ? 'ok' : 'bad'}"><i class="ic ${T.ok ? 'ic-check' : 'ic-alert'}"></i><span>${T.standin ? esc(T.note || '')
+    : T.ok ? `<b>Working.</b> ${esc(T.model_returned || T.model)} answered in ${aiSec(T.seconds)}${T.finish_reason ? `, finish: ${esc(T.finish_reason)}` : ''}.`
+    : `<b>Not working.</b> ${esc(T.error || 'No answer.')}`}${T.at ? ` <small class="muted">Tested at ${new Date(T.at * 1000).toLocaleTimeString()}.</small>` : ''}</span></div>` : ''}`);
+/* Wait against the cutoff: the bar fills to the wait, the line marks the cutoff. */
+const aiWaitBar = (label, per, wait, cut, scale) => { const ok = wait <= cut;
+  return `<div class="ai-wb ${ok ? 'ok' : 'bad'}"><div class="ai-wb-l"><b>${label}</b><small>${aiSec(per)} per reply</small></div>
+    <div class="ai-wb-t"><i style="width:${Math.min(100, wait / scale * 100)}%"></i><u style="left:${cut / scale * 100}%" title="Cutoff: ${cut} s"></u></div>
+    <div class="ai-wb-v"><b>${aiSec(wait)}</b><small>${ok ? 'fits' : 'too long'}</small></div></div>`; };
 function aiTabHTML(D){
   if (!D) return '<p class="muted">Loading…</p>';
-  const U = UIS(), C = D.config, L = D.log || [], A = aiAgg(L), S = D.session;
-  const tile = (v, l, cls) => `<div class="stat ai-stat ${cls || ''}"><b>${v}</b><span>${l}</span></div>`;
-  const kv = (k, v, h) => `<div class="ai-kv"><span>${k}</span><b>${v}</b>${h ? `<small>${h}</small>` : ''}</div>`;
-  const fb = D.totals.fallbacks || 0;
+  const U = UIS(), C = D.config, L = D.log || [], A = aiAgg(L), S = D.session, R = D.requests || null, BF = D.totals.by_failure || {};
+  const tile = (v, l, ic, cls) => `<div class="stat ai-stat ${cls || ''}"><i class="ic ${ic}"></i><b>${v}</b><span>${l}</span></div>`;
+  const kv = (k, v, h, cls) => `<div class="ai-kv ${cls || ''}"><span>${k}</span><b>${v}</b>${h ? `<small>${h}</small>` : ''}</div>`;
+  const fb = D.totals.fallbacks || 0, modelCap = C.arc_model_cap || 10, keyCap = C.arc_key_cap || 20;
+  const counts = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${v}`).join(' · ') || '—';
+  const T = C.test || window.AI_TEST_LOCAL;
   // what a class would need
-  const N = Math.max(3, Math.min(600, parseInt(U.aiN, 10) || Math.max(S.joined, 90))), teams = Math.floor(N / 3), medTeams = Math.round(teams * S.mediated_share), calls = medTeams * S.rounds;
-  const per = A.n ? {i:A.tokIn / A.n, o:A.tokOut / A.n, s:A.med} : {i:1500, o:300, s:C.real ? 8 : 2};
-  const waves = Math.ceil(medTeams / C.concurrency), worst = waves * per.s, okWait = worst <= C.timeout_s;
+  const N = Math.max(3, Math.min(600, parseInt(U.aiN, 10) || Math.max(S.joined, 90))), teams = Math.floor(N / 3), medTeams = Math.round(teams * S.mediated_share), turns = medTeams * S.rounds;
+  const per = A.n ? {i:A.tokIn / A.n, o:A.tokOut / A.n} : {i:1500, o:300};
+  const waves = Math.max(1, Math.ceil(medTeams / C.concurrency));
+  const cases = [...(C.real && A.n ? [['This session', A.med]] : []), ['ARC quick', AI_SPEED.quick], ['ARC busy', AI_SPEED.busy]];
+  const scale = Math.max(C.timeout_s * 1.35, ...cases.map(([, s]) => waves * s));
+  const busyOk = waves * AI_SPEED.busy <= C.timeout_s;
   const maxBar = Math.max(1, ...A.series);
-  return `${C.real ? '' : `<div class="ai-note"><i class="ic ic-alert"></i><span><b>The stand-in Mediator is running, so no real AI is being called.</b> Times are the stand-in's short fake delay. Token and data numbers are estimates of what a real model would be sent and send back (about 4 letters per token). To use a real model, set MEDIATOR=llm on the server (see the README).</span></div>`}
-    <div class="stats ai-stats">${tile(D.now.flight, 'Running right now', D.now.flight ? 'live' : '')}${tile(D.now.waiting, 'Waiting in line', D.now.waiting ? 'warn' : '')}${tile(D.totals.calls, 'Calls so far')}
-      ${tile(fb, 'Stand-in had to answer', fb ? 'bad' : '')}${tile(aiSec(A.med), 'Typical reply time')}${tile(aiSec(A.max), 'Slowest reply')}</div>
+  // top status strip: what is answering, and is it healthy
+  const state = !C.real ? 'idle' : (T && !T.ok) || fb ? 'bad' : T && T.ok ? 'ok' : 'live';
+  const stateText = !C.real ? 'Stand-in (no AI)' : state === 'bad' ? 'Live model · needs attention' : state === 'ok' ? 'Live model · working' : 'Live model · not tested yet';
+  const health = R && R.n ? `<div class="ai-health" title="${R.answered} answered, ${R.errors} failed"><i style="flex:${R.answered}"></i>${R.errors ? `<i class="bad" style="flex:${R.errors}"></i>` : ''}</div>` : '';
+  return `<div class="ai-hero ${state}">
+      <span class="ai-light"></span>
+      <div class="ai-hero-t"><b>${stateText}</b><span>${C.real ? `${esc(C.model)}${C.arc ? ' on VT ARC · VT network or VPN only · ARC logs what it is sent' : ` · ${esc(C.endpoint)}`}` : 'Fixed rules inside the app. Nothing is sent anywhere. Pick a model on the Setup tab.'}</span></div>
+      <div class="ai-hero-c">${C.real && T ? `<span class="${T.ok ? '' : 'bad'}"><i class="ic ${T.ok ? 'ic-check' : 'ic-alert'}"></i>Last test ${T.ok ? aiSec(T.seconds) : 'failed'}</span>` : ''}
+        <span><i class="ic ic-list"></i>${D.totals.calls} turn${D.totals.calls === 1 ? '' : 's'}</span><span class="${fb ? 'bad' : ''}"><i class="ic ic-alert"></i>${fb} stand-in</span></div></div>
+    ${aiTestCard(T, window.AI_TEST_BUSY)}
+    <div class="stats ai-stats">${tile(D.now.flight, 'Running right now', 'ic-pulse', D.now.flight ? 'live' : '')}${tile(D.now.waiting, 'Waiting in line', 'ic-clock', D.now.waiting ? 'warn' : '')}${tile(D.totals.calls, 'Mediator turns so far', 'ic-chat')}
+      ${tile(fb, 'Stand-in had to answer', 'ic-alert', fb ? 'bad' : 'good')}${tile(aiSec(A.med), 'Typical reply time', 'ic-gauge')}${tile(aiSec(A.max), 'Slowest reply', 'ic-up')}</div>
     <div class="ai-grid">
-      <div class="card"><h3 style="margin-top:0">What the AI is set up as</h3><p class="small muted">These are set on the server before it starts. They cannot be changed from this page.</p>
-        ${kv('Mediator', esc(C.mediator))}${kv('Model', C.model ? esc(C.model) : 'none (rule-based stand-in)')}${kv('Where calls go', C.endpoint ? esc(C.endpoint) : 'nowhere, it runs inside the app')}
-        ${kv('Calls at the same time', `at most ${C.concurrency}`, 'More than this and teams wait in line.')}${kv('Give up after', `${C.timeout_s} seconds`, `Then ${esc(C.fallback)} answers instead, and the call is marked.`)}
-        ${C.reasoning ? kv('Reasoning effort', esc(C.reasoning)) : ''}${C.max_tokens ? kv('Longest reply allowed', `${C.max_tokens} tokens`) : ''}
-        ${kv('When it is called', `once per team per round, ${S.rounds} rounds`, 'Only for types with a Mediator. Unmediated teams never call it.')}</div>
-      <div class="card"><h3 style="margin-top:0">Load so far</h3><p class="small muted">How hard this session has pushed the AI.${A.est ? ' Token and data numbers are estimates.' : ''}</p>
-        ${kv('Busiest minute', `${A.peakCalls} call${A.peakCalls === 1 ? '' : 's'} · ${aiNum(A.peakTok)} tokens`, 'Compare this with the rate limit on your AI account.')}
+      ${aiCard('setup', '', `${aiHead('setup', 'What the AI is set up as')}
+        ${kv('Mediator', esc(C.mediator))}${kv('Model', C.model ? esc(C.model) : 'none (rule-based stand-in)', 'Change it on the Setup tab, before teams are formed.')}${kv('Where calls go', C.endpoint ? esc(C.endpoint) : 'nowhere, it runs inside the app', C.arc ? 'VT network or VT VPN only.' : '')}
+        ${kv('Turns at the same time', `at most ${C.concurrency}`, C.concurrency > modelCap ? `ARC allows only ${modelCap} per model per key. Lower AI_CONCURRENCY.` : `ARC allows ${modelCap} per model and ${keyCap} in flight per key. Use this key for nothing else during class.`, C.concurrency > modelCap ? 'bad' : '')}
+        ${kv('Give up after', `${C.timeout_s} seconds`, `For a whole turn, retries included. Then ${esc(C.fallback)} answers instead, and the turn is marked.`)}
+        ${C.reasoning ? kv('Reasoning effort', esc(C.reasoning)) : ''}${C.max_tokens ? kv('Longest reply allowed', `${C.max_tokens} tokens`, 'Reasoning counts toward this. Too low gives empty replies.') : ''}
+        ${C.request_timeout_s ? kv('One request waits up to', `${C.request_timeout_s} seconds`) : ''}${C.temperature != null ? kv('Temperature', `${C.temperature}`) : ''}
+        ${C.real ? kv('If a request fails', 'up to 4 tries', 'Busy: wait 1, 2, 4 s. ARC gateway timeout: wait 15, 30, 45 s. Missing model or bad key: stop.') : ''}
+        ${kv('When it is called', `once per team per round, ${S.rounds} rounds`, 'Only for types with a Mediator. Unmediated teams never call it.')}`)}
+      ${aiCard('req', '', `${aiHead('req', 'Requests to the model', R && R.n ? `${R.n} sent` : '')}
+        ${health}
+        ${R && R.n ? `${kv('Requests sent', `${R.n}`, `${R.answered} answered · ${R.errors} failed. One turn can take several requests.`)}
+          ${kv('Retries', `${R.retries}`, 'Busy, network or gateway errors that were tried again.')}
+          ${kv('Repairs', `${R.repairs}`, 'Re-asks after a missing or over-budget bundle.')}
+          ${kv('Empty replies', `${R.empty}`, R.empty ? 'Reasoning used up the token limit. If this keeps happening, raise MEDIATOR_MAX_TOKENS.' : 'None so far.', R.empty ? 'bad' : '')}
+          ${kv('How replies ended', counts(R.finish), '"length" means cut off at the token limit.', (R.finish || {}).length ? 'bad' : '')}
+          ${kv('Model that answered', counts(R.models), 'As reported by the server. Should stay the same all study.', Object.keys(R.models || {}).length > 1 ? 'bad' : '')}
+          ${R.errors ? kv('Errors by kind', counts(R.error_kinds), 'gateway: ARC gave up on its backend · busy: too many at once · vpn: not on the VT network · setup: bad key or missing model') : ''}`
+        : `<p class="small muted">${C.real ? 'No requests yet. They start when a team finishes a round.' : 'The stand-in answers inside the app, so nothing is sent.'}</p>`}
+        ${kv('Stand-in answered', `${fb} turn${fb === 1 ? '' : 's'}`, fb ? `${BF.timeout || 0} took too long · ${BF.network || 0} network or ARC problem · ${BF.model || 0} no valid bundle. Exclude these teams from the primary analysis.` : 'Every turn was answered by the Mediator.', fb ? 'bad' : '')}`)}
+      ${aiCard('load', '', `${aiHead('load', 'Load so far')}
+        ${kv('Busiest minute', `${A.peakCalls} turn${A.peakCalls === 1 ? '' : 's'} · ${aiNum(A.peakTok)} tokens`)}
         ${kv('Most running at once', `${D.totals.peak_flight || 0} of ${C.concurrency} allowed`)}${kv('Longest wait in line', aiSec(A.waitMax))}
         ${kv('Reply time', A.n ? `${aiSec(A.med)} typical · ${aiSec(A.p95)} for the slow 5%` : '—')}
-        ${kv('Tokens', `${aiNum(A.tokIn)} sent · ${aiNum(A.tokOut)} received`, A.n ? `About ${aiNum(A.tokIn / A.n)} in and ${aiNum(A.tokOut / A.n)} out per call.` : '')}
-        ${kv('Data', `${aiBytes(A.bOut)} sent · ${aiBytes(A.bIn)} received`, 'Text only, so the network load is tiny.')}
-        ${kv('Problems', `${A.timeouts} timed out · ${A.errors} errors`)}
-        ${A.series.length ? `<div class="ai-chart" role="img" aria-label="Calls in each minute of the session"><small>Calls in each minute of the session</small><div class="ai-bars">${A.series.map((v, i) => `<i style="height:${Math.max(4, v / maxBar * 100)}%" class="${v ? '' : 'z'}" title="Minute ${i + 1}: ${v} call${v === 1 ? '' : 's'}"></i>`).join('')}</div><div class="ai-ax"><span>min 1</span><span>min ${A.series.length}</span></div></div>` : ''}</div></div>
-    <div class="card ai-plan"><h3 style="margin-top:0">What a real class would need</h3>
-      <p class="small muted">Pick a class size. This uses the ${A.n ? 'numbers from this session' : 'default guesses, since no calls have happened yet'} and the worst case, where every team finishes a round at the same moment.</p>
+        ${kv('Tokens', `${aiNum(A.tokIn)} sent · ${aiNum(A.tokOut)} received`, A.n ? `About ${aiNum(A.tokIn / A.n)} in and ${aiNum(A.tokOut / A.n)} out per turn.${A.est ? ' Estimates.' : ''}` : '')}
+        ${kv('Data', `${aiBytes(A.bOut)} sent · ${aiBytes(A.bIn)} received`)}
+        ${A.series.length ? `<div class="ai-chart" role="img" aria-label="Turns in each minute of the session"><small>Turns in each minute of the session</small><div class="ai-bars">${A.series.map((v, i) => `<i style="height:${Math.max(4, v / maxBar * 100)}%;--d:${Math.min(i, 40) * 15}ms" class="${v ? '' : 'z'}" title="Minute ${i + 1}: ${v} turn${v === 1 ? '' : 's'}"></i>`).join('')}</div><div class="ai-ax"><span>min 1</span><span>min ${A.series.length}</span></div></div>` : ''}`)}</div>
+    ${aiCard('plan', 'ai-plan', `${aiHead('plan', 'What a real class would need')}
+      <p class="small muted" style="margin-top:0">Worst case: every team finishes a round at the same moment. Reply times on ARC's shared service ranged from about ${AI_SPEED.quick} s to about ${aiSec(AI_SPEED.busy)} in the simulation's runs.</p>
       <div class="inline" style="margin-bottom:10px"><span>Students in the class:</span><span class="numstep"><button type="button" data-act="ain" data-d="-15" aria-label="15 fewer">−</button><input class="pn-in ai-in" id="ain" type="text" inputmode="numeric" maxlength="3" value="${N}" aria-label="Students in the class"><button type="button" data-act="ain" data-d="15" aria-label="15 more">+</button></span></div>
-      <div class="ai-plan-g">${kv('Teams', `${teams}`, `${medTeams} of them use the Mediator.`)}${kv('AI calls in the session', `${calls}`, `${medTeams} teams × ${S.rounds} rounds.`)}
-        ${kv('Calls landing together', `up to ${medTeams}`, `Only ${C.concurrency} run at once, so they go in ${waves} wave${waves === 1 ? '' : 's'}.`)}
-        ${kv('Longest a team might wait', aiSec(worst), `${waves} wave${waves === 1 ? '' : 's'} × ${aiSec(per.s)} per reply.`)}
-        ${kv('Tokens for the session', `about ${aiNum(calls * (per.i + per.o))}`, `${aiNum(calls * per.i)} sent · ${aiNum(calls * per.o)} received.`)}
-        ${kv('Tokens in the busiest minute', `up to ${aiNum(medTeams * (per.i + per.o))}`, 'If every team closes a round within the same minute.')}</div>
-      <div class="ai-verdict ${okWait ? 'ok' : 'bad'}"><i class="ic ${okWait ? 'ic-check' : 'ic-alert'}"></i><span>${okWait ? `<b>This fits.</b> Even in the worst case, the last team waits about ${aiSec(worst)}, under the ${C.timeout_s}-second cutoff.` : `<b>This is too tight.</b> In the worst case the last team waits about ${aiSec(worst)}, past the ${C.timeout_s}-second cutoff, so the stand-in would answer for some teams. Ask for a higher limit on calls at the same time (AI_CONCURRENCY), a faster model, or a longer cutoff (AI_TIMEOUT).`}</span></div></div>
-    <div class="card"><h3 style="margin-top:0">Every call · ${L.length}</h3><p class="small muted">One row each time the Mediator was asked to write something. "Wait" is time in line. "Reply" is how long the AI took.</p>
+      <div class="ai-plan-g">${kv('Teams', `${teams}`, `${medTeams} of them use the Mediator.`)}${kv('Mediator turns in the session', `${turns}`, `${medTeams} teams × ${S.rounds} rounds. Repairs and retries add requests.`)}
+        ${kv('Turns landing together', `up to ${medTeams}`, `Only ${C.concurrency} run at once, so they go in ${waves} wave${waves === 1 ? '' : 's'}.`)}
+        ${kv('Tokens for the session', `about ${aiNum(turns * (per.i + per.o))}`, `${aiNum(turns * per.i)} sent · ${aiNum(turns * per.o)} received.`)}</div>
+      <div class="ai-waits"><div class="ai-waits-h"><span>How long the last team waits</span><span class="ai-cut"><u></u>${C.timeout_s} s cutoff</span></div>
+        ${cases.map(([l, s]) => aiWaitBar(l, s, waves * s, C.timeout_s, scale)).join('')}</div>
+      <div class="ai-verdict ${busyOk ? 'ok' : 'bad'}"><i class="ic ${busyOk ? 'ic-check' : 'ic-alert'}"></i><span>${busyOk ? `<b>This fits, even on a busy day.</b> The last team waits about ${aiSec(waves * AI_SPEED.busy)} in the worst case.`
+        : `<b>On a busy day, the shared service is too slow for this class.</b> Plan on a dedicated model (ARC Open OnDemand or vLLM), or test with "Test the AI" and a practice run at the class's day and hour. More turns at once (AI_CONCURRENCY, at most ${modelCap}) or a longer cutoff (AI_TIMEOUT) only help a little.`}</span></div>`)}
+    ${aiCard('turns', '', `${aiHead('turns', `Every turn · ${L.length}`)}
       ${L.length ? `${sortBar('ai', AI_OPTS)}<div class="ai-log">${sortRows('ai', L, AI_OPTS, AI_GET).slice(0, 80).map(x => `<div class="ai-row ${x.status}" style="--cc:${U.hideCond ? '#5b6070' : CONDC[x.cond]}">
         <span class="ai-t">#${x.i}</span><span class="ai-team"><i class="ic ic-team3"></i>Team ${x.team}</span><span class="pp-pill ${U.hideCond ? '' : 'c'}">${U.hideCond ? 'type hidden' : esc(typeof condLabel === 'function' ? condLabel(x.cond) : condLbl(x.cond))}</span>
         <span class="ai-kind">${esc(x.kind)} · round ${x.round}</span>
-        <span class="pp-pill ${x.status === 'ok' ? 'ok' : 'no'}"><i class="ic ${x.status === 'ok' ? 'ic-check' : 'ic-alert'}"></i>${x.status === 'ok' ? 'OK' : x.status === 'timeout' ? 'Timed out, stand-in answered' : 'Error, stand-in answered'}</span>
-        <span class="ai-n" title="Time waiting in line"><i class="ic ic-clock"></i>${aiSec(x.wait_s)} wait</span><span class="ai-n" title="How long the AI took"><i class="ic ic-pulse"></i>${aiSec(x.model_s)} reply</span>
+        <span class="pp-pill ${x.status === 'ok' ? 'ok' : 'no'}"><i class="ic ${x.status === 'ok' ? 'ic-check' : 'ic-alert'}"></i>${x.status === 'ok' ? 'OK' : x.status === 'timeout' ? 'Took too long, stand-in answered' : x.status === 'network' ? 'Network or ARC problem, stand-in answered' : x.status === 'model' ? 'No valid bundle, stand-in answered' : 'Error, stand-in answered'}</span>
+        <span class="ai-n" title="Time waiting in line"><i class="ic ic-clock"></i>${aiSec(x.wait_s)} wait</span><span class="ai-n" title="How long the turn took, retries and repairs included"><i class="ic ic-pulse"></i>${aiSec(x.model_s)} reply</span>
         <span class="ai-n" title="Tokens sent and received${x.est ? ' (estimate)' : ''}"><i class="ic ic-chat"></i>${aiNum(x.tok_in)} in · ${aiNum(x.tok_out)} out${x.est ? ' <em>est.</em>' : ''}</span>
-        ${x.error ? `<span class="ai-err">${esc(x.error)}</span>` : ''}</div>`).join('')}</div>${L.length > 80 ? `<p class="small muted">Showing 80 of ${L.length}.</p>` : ''}` : '<p class="muted">No calls yet. The Mediator is called when a team finishes a round.</p>'}</div>`;
+        ${x.requests > 1 || x.repairs || x.retries ? `<span class="ai-n" title="Requests this turn took"><i class="ic ic-list"></i>${x.requests} requests${x.repairs ? ` · ${x.repairs} repair${x.repairs === 1 ? '' : 's'}` : ''}${x.retries ? ` · ${x.retries} retr${x.retries === 1 ? 'y' : 'ies'}` : ''}</span>` : ''}
+        ${x.empty ? `<span class="ai-n bad-t" title="Replies with no text"><i class="ic ic-alert"></i>${x.empty} empty</span>` : ''}${x.finish === 'length' ? '<span class="ai-n bad-t">cut off at token limit</span>' : ''}
+        ${x.error ? `<span class="ai-err">${esc(x.error)}</span>` : ''}</div>`).join('')}</div>${L.length > 80 ? `<p class="small muted">Showing 80 of ${L.length}.</p>` : ''}` : '<p class="muted">No turns yet. The Mediator is called when a team finishes a round.</p>'}`)}`;
 }
 
 const PN = () => Math.max(1, Math.min(150, parseInt(UIS().practiceN, 10) || 12));
@@ -2287,10 +2512,10 @@ document.addEventListener('focusout', e => { const t = e.target; if (t.classList
 function simPanelHTML(o){
   const done = o.teams > 0 && o.finished >= o.teams, run = o.on && !done;
   const lo = Math.max(1, Math.round(o.total / (o.speed || 1))), hi = Math.max(lo + 1, Math.round(o.total * 2.3 / (o.speed || 1)));
-  const status = done ? `<span class="simlive done"><i></i>Finished</span> · all ${o.teams} teams are done, so the clock stopped. Look at the Charts tab, or start fresh to run it again.`
+  const status = done ? `<span class="simlive done"><i></i>Finished</span> · all ${o.teams} teams are done.`
     : run && o.paused ? `<span class="simlive pau"><i></i>Paused</span> · nobody can move on, real or simulated, until you press Resume.`
-    : run ? `<span class="simlive"><i></i>Running at ${o.speed}×</span> · ${o.finished} of ${o.teams} teams finished. A whole session usually takes ${lo} to ${hi} min at this speed.`
-    : 'Pick how many simulated students you want, add them, then press Run. Teams form by themselves and every simulated student plays like a real one: some engaged, some low effort, some slow, some misread their results.';
+    : run ? `<span class="simlive"><i></i>Running at ${o.speed}×</span> · ${o.finished} of ${o.teams} teams finished. About ${lo} to ${hi} min at this speed.`
+    : 'Add simulated students, then press Run.';
   const seg = `<span class="seg">${[[1,'1× real class'],[5,'5×'],[15,'15×'],[40,'40×']].map(([v, l]) => `<button data-act="simspeed" data-v="${v}" class="${(run ? o.speed : o.sp) === v ? 'on' : ''}">${l}</button>`).join('')}</span>`;
   const btns = done ? `<button class="simgo alt" data-act="admtab" data-tab="charts">See the charts</button><button class="simgo" data-act="startfresh">Start fresh</button>`
     : run ? `${seg}<button class="simgo alt" data-act="pause">${o.paused ? '<i class="ic ic-play"></i>Resume' : '<i class="ic ic-pause"></i>Pause'}</button><button class="simgo stop" data-act="autorun" data-v="0"><i class="ic ic-stop"></i>Stop</button>`
@@ -2321,14 +2546,14 @@ function wStats(){
     <div class="seg ws-seg">${[['now','Overview'],['said',`Messages${x.messages ? ' · ' + x.messages.length : ''}`],['log','Activity']].map(([k, l]) => `<button type="button" data-act="wpane" data-v="${k}" class="${pane === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   let h = '';
   if (pane === 'now'){
-    if (x.findings) h += box('Secret findings', 'Only this player has these. Each one should travel left to right: said it, teammates saw it, team used it, it is in the final design.',
+    if (x.findings) h += box('Secret findings', 'Only this player has these.',
       x.findings.map(f => `<div class="ws-f"><div class="ws-ft"><span><b>${f.f}</b> ${esc(f.name)}</span><span class="ws-dir ${f.dir > 0 ? 'up' : 'dn'}">really ${dirWord(f.dir)}</span></div>
         <ol class="ws-track"><li class="${f.spoken ? 'on' : ''}">Said</li><li class="${f.heard ? 'on' : ''}">Seen</li><li class="${f.integrated ? 'on' : ''}">Used</li><li class="${f.actioned ? 'on' : ''}">In final</li></ol>
         ${!f.spoken && f.mentioned ? '<div class="ws-note">Named it, but did not say if it is worth more or less.</div>' : ''}</div>`).join(''));
     if (x.picks) h += box('Picks right now', '', `<div class="ws-chips">${x.picks.length ? x.picks.map(f => `<span class="fd-chip">${f}</span>`).join('') : '<span class="muted">No picks yet</span>'}</div>
       ${meter('Budget used', `$${x.cost} of $${x.budget}`, x.cost / x.budget * 100)}${meter('Real value of these picks', `${x.picks_value} of ${x.opt} · ${Math.round(x.picks_value / x.opt * 100)}%`, x.picks_value / x.opt * 100)}
       ${x.draft ? `<p class="ws-hint" style="margin:10px 0 4px">Typing now (not sent yet):</p><div class="fd-draft">${esc(x.draft)}</div>` : ''}`);
-    h += box('Behavior', 'Counts for this player so far.', `<div class="ws-tiles">${tile(c.pick, 'Pick changes')}${tile(c.tab, 'Tab switches')}${tile(c.left_app, 'Left the app')}${tile(c.paste_blocked, 'Paste tries')}${tile(c.copy_blocked, 'Copy tries')}${tile(c.time_warning, 'Time reminders')}${tile(c.help, 'Help requests')}</div>`);
+    h += box('Behavior', '', `<div class="ws-tiles">${tile(c.pick, 'Pick changes')}${tile(c.tab, 'Tab switches')}${tile(c.left_app, 'Left the app')}${tile(c.paste_blocked, 'Paste tries')}${tile(c.copy_blocked, 'Copy tries')}${tile(c.time_warning, 'Time reminders')}${tile(c.help, 'Help requests')}</div>`);
   }
   if (pane === 'said'){
     h += box('Messages sent', x.messages && x.messages.length ? `${x.messages.length} message${x.messages.length === 1 ? '' : 's'} · ${x.words} words` : '',
@@ -2403,26 +2628,13 @@ function wStats(){
    and helpful empty screens. Shared by the server app and the prototype.
    ===================================================================== */
 const TAB_GROUPS = [
-  ['Run the session', [['live','Live session'], ['watch','Watch players'], ['ai','AI backend'], ['projector','Projector']]],
+  ['Run the session', [['live','Live session'], ['watch','Watch players'], ['ai','AI status']]],
   ['See results', [['charts','Charts'], ['results','Results & data'], ['people','People'], ['saved','Saved sessions']]],
   ['Before class', [['setup','Setup']]],
 ];
-const TAB_HELP = {
-  live:'Start here. The run sheet walks you through a class session step by step.',
-  watch:'See any player\'s screen live, with extra admin-only info. Good for spotting confusion early.',
-  feed:'Every message, vote and survey answer, the moment someone sends it.',
-  projector:'The join screen for the lecture hall: class code and QR code. Then it shows team progress.',
-  charts:'Live charts for the research questions. Use "Build a report" to download them.',
-  results:'Each team\'s final design and score, plus every data download (CSV, database).',
-  people:'Every participant as a profile. Click one for their full activity log, step by step.',
-  ai:'What the Mediator AI is doing behind the scenes: calls, speed, load, and what a full class would need.',
-  saved:'Save a session as a folder, then open it later and look around with the same tabs.',
-  setup:'Class code, deliberation types, step timers, rounds and the Mediator. Check this before class.',
-};
 function tabsHTML(cur){
   return `<nav class="tabs2" aria-label="Admin sections">${TAB_GROUPS.map(([g, ts]) => `<div class="tg"><span class="tg-l">${g}</span><div class="tg-b">${ts.map(([k, l]) =>
-    `<button data-act="admtab" data-tab="${k}" class="${cur === k ? 'on' : ''}" aria-current="${cur === k ? 'page' : 'false'}">${l}</button>`).join('')}</div></div>`).join('')}</nav>
-    <p class="tab-help">${TAB_HELP[cur] || ''}</p>`;
+    `<button data-act="admtab" data-tab="${k}" class="${cur === k ? 'on' : ''}" aria-current="${cur === k ? 'page' : 'false'}">${l}</button>`).join('')}</div></div>`).join('')}</nav>`;
 }
 /* G = {lobbyOpen, joined, answered, teams, finished, bots, real, hideCond, help, paused, auto, mediator, rounds, totalMin, code, setupSeen, collapsed} */
 function runSheet(G){
@@ -2432,23 +2644,79 @@ function runSheet(G){
       a:`<button class="mini" data-act="admtab" data-tab="setup">Open Setup</button>${!G.hideCond ? '<button class="mini" data-act="hidecond">Hide types for class</button>' : ''}`},
     {t:'Show the join screen', done:S2, d:`Put the projector view on the big screen. Students scan the QR code or go to this site and type <b>${esc(G.code)}</b>. No names or accounts.`,
       a:G.projectorBtn},
-    {t:'Wait for students to join', done:S4, d:G.lobbyOpen ? `<b>${G.joined}</b> joined · <b>${G.answered}</b> answered the consent question. Teams are groups of 3, so a few leftovers are normal. Just testing? Add simulated students in the Full simulation box below.` : `${G.joined} joined.`,
+    {t:'Wait for students to join', done:S4, d:G.lobbyOpen ? `<b>${G.joined}</b> joined · <b>${G.answered}</b> answered the consent question.` : `${G.joined} joined.`,
       a:G.lobbyOpen ? '' : ''},
     {t:'Form the teams', done:S4, d:G.lobbyOpen ? 'This closes the lobby and puts everyone into teams of 3 with a deliberation type. Late arrivals can still be added after.' : `${G.teams} teams formed.`,
       a:G.lobbyOpen ? `<button class="mini dark" data-act="formsure" ${G.answered ? '' : 'disabled title="Wait until someone answers consent"'}>Form teams</button>` : ''},
-    {t:'Keep an eye on things', done:S5, d:S4 ? `<b>${G.finished} of ${G.teams}</b> teams finished${G.help ? ` · <b class="bad-t">${G.help} asking for help</b>` : ''}${G.paused ? ' · <b>paused</b>' : ''}. Players get time reminders on their own.` : 'Once teams are formed, watch their screens here.',
+    {t:'Keep an eye on things', done:S5, d:S4 ? `<b>${G.finished} of ${G.teams}</b> teams finished${G.help ? ` · <b class="bad-t">${G.help} asking for help</b>` : ''}${G.paused ? ' · <b>paused</b>' : ''}.` : 'Once teams are formed, watch their screens here.',
       a:S4 ? `<button class="mini" data-act="admtab" data-tab="watch">Watch players</button><button class="mini" data-act="pause">${G.paused ? 'Resume everyone' : 'Pause everyone'}</button>` : ''},
-    {t:'Wrap up and save the results', done:false, d:'Download the data and build a report with the charts and how each one was made.',
+    {t:'Wrap up and save the results', done:false, d:'',
       a:G.teams ? `<button class="mini dark" data-act="gotoreport">Build a report</button><button class="mini" data-act="admtab" data-tab="results">Download data</button><button class="mini" data-act="admtab" data-tab="saved">Save this session</button>` : ''},
   ];
   const now = steps.findIndex(s => !s.done);
   return `<div class="card runsheet ${G.collapsed ? 'col' : ''}"><div class="rs-h"><h3 style="margin:0">Run sheet</h3><span class="small muted">${now < 0 ? 'All done' : `Step ${now + 1} of ${steps.length}`}</span>
       <button class="xp-link" data-act="rstoggle">${G.collapsed ? 'Show' : 'Hide'}</button></div>
-    ${G.collapsed ? '' : `<ol class="rs">${steps.map((s, i) => `<li class="${s.done ? 'done' : i === now ? 'now' : ''}"><span class="rs-n">${s.done ? '✓' : i + 1}</span><div class="rs-b"><b>${s.t}</b>${i === now || !s.done ? `<p>${s.d}</p>${s.a ? `<div class="rs-a">${s.a}</div>` : ''}` : ''}</div></li>`).join('')}</ol>`}</div>`;
+    ${G.collapsed ? '' : `<ol class="rs">${steps.map((s, i) => `<li class="${s.done ? 'done' : i === now ? 'now' : ''}"><span class="rs-n">${s.done ? '✓' : i + 1}</span><div class="rs-b"><b>${s.t}</b>${i === now || !s.done ? `${s.d ? `<p>${s.d}</p>` : ''}${s.a ? `<div class="rs-a">${s.a}</div>` : ''}` : ''}</div></li>`).join('')}</ol>`}</div>`;
 }
+const projBar = code => `<div class="projbar"><span class="pj-ic"><i class="ic ic-screen"></i></span><div class="pj-t"><b>Projector screen</b><small>QR code and class code <b>${esc(code)}</b>, then team progress.</small></div><button class="pj-go" data-act="projector"><i class="ic ic-screen"></i>Open projector view</button></div>`;
+/* ---------- Section look for every admin tab (same style as the AI status tab) ----------
+   Each kind of card keeps one color and one line icon everywhere, picked by its title.
+   Runs after each admin render. Only touches cards at the top level of the page, so the
+   student screens mirrored inside Watch players are left exactly as students see them. */
+const SEC_COLORS = {green:'#255E4B', slate:'#2A2E3B', teal:'#2B7F72', indigo:'#4C5BA8', amber:'#9A6400', rose:'#B4475A', gray:'#5b6070'};
+const SEC_MAP = [   // title starts with -> [color, icon]
+  ['Run sheet','green','ic-flag'], ['Full simulation','indigo','ic-play'], ['Lobby is open','teal','ic-user'], ['Message everyone','amber',null],
+  ['Needs attention','rose','ic-bell'], ['Teams','slate','ic-team3'], ['Team timelines','slate','ic-team3'],
+  ['Watch players','teal','ic-eye'], ['Live feed','teal','ic-chat'], ['Typing now','teal','ic-chat'],
+  ['Which teams count','slate','ic-check'], ['The four steps','green','ic-flag'], ['Points lost','rose','ic-down'], ['Design outcome','indigo','ic-gauge'],
+  ['Downloads','teal','ic-download'], ['Copy the data','teal','ic-download'], ['Build a report','indigo','ic-download'], ['Each team','slate','ic-team3'],
+  ['People','teal','ic-user'], ['Everything they did','slate','ic-list'], ['Time on each step','amber','ic-clock'],
+  ['Save this session','green','ic-folder'], ['Saved sessions','indigo','ic-folder'],
+  ['Session','slate','ic-sliders'], ['Deliberation types','slate','ic-team3'], ['Headcount','amber','ic-user'], ['Step timers','amber','ic-clock'], ['Mediator','green','ic-chat'], ['New session','rose','ic-play'], ['Start over','rose','ic-stop'],
+  ['Findings','green','ic-flag'], ['Everything saved','slate','ic-list'],
+];
+const SEC_STATS = [['Joined','ic-user'], ['Teams finished','ic-check'], ['Teams waiting','ic-clock'], ['AI calls','ic-chat']];
+function decorateSections(root){
+  if (!root) return;
+  root.querySelectorAll(':scope > .card').forEach(card => {
+    if (card.dataset.sec || /\b(ai-sec|empty|proj)\b/.test(card.className)) return;
+    const h = card.querySelector('h3');
+    if (!h) return;
+    const title = (h.firstChild ? h.firstChild.textContent : h.textContent).trim();
+    const m = SEC_MAP.find(([p]) => title.startsWith(p)), icon = m ? m[2] : 'ic-list';
+    card.dataset.sec = '1';
+    card.classList.add('sec');
+    card.style.setProperty('--sc', SEC_COLORS[m ? m[1] : 'gray']);
+    let d = 0; for (let e = h.parentElement; e && e !== card; e = e.parentElement) d++;
+    const top = d <= 2;                                   // a heading near the top of the card
+    if (!icon || !top || card.querySelector('.bc-ic')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'sec-h';
+    wrap.innerHTML = `<span class="sec-ic"><i class="ic ${icon}"></i></span>`;
+    h.parentElement.insertBefore(wrap, h);
+    wrap.appendChild(h);
+  });
+  root.querySelectorAll(':scope > .stats > .stat:not(.ai-stat)').forEach(s => {
+    const t = ((s.querySelector('span') || {}).textContent || '').trim(), m = SEC_STATS.find(([p]) => t.startsWith(p));
+    if (m && !s.querySelector(':scope > .ic')){ s.classList.add('sec-stat'); s.insertAdjacentHTML('afterbegin', `<i class="ic ${m[1]}"></i>`); }
+  });
+}
+/* Status strips for the two tabs with a real state to show. Same look as the AI status strip. */
+const liveHero = G => {
+  const state = G.help || G.stuck ? 'bad' : G.paused ? 'live' : G.running ? 'ok' : 'idle';
+  const title = G.paused ? 'Paused' : G.running ? (G.auto ? `Running · simulation at ${G.auto}×` : 'Running')
+    : G.lobbyOpen ? 'Lobby open · waiting for students' : G.teams && G.finished >= G.teams ? 'All teams finished' : 'Stopped';
+  return `<div class="ai-hero sec-hero ${state}"><span class="ai-light"></span>
+    <div class="ai-hero-t"><b>${title}</b><span>Class code ${esc(G.code)} · ${esc(G.mediator)}</span></div>
+    <div class="ai-hero-c"><span class="${G.help ? 'bad' : ''}"><i class="ic ic-bell"></i>${G.help} asking for help</span>${G.stuck ? `<span class="bad"><i class="ic ic-clock"></i>${G.stuck} waiting over 2 min</span>` : ''}
+      <span><i class="ic ic-eye"></i>Types ${G.hideCond ? 'hidden' : 'showing'}</span></div></div>`;
+};
+const setupHero = G => `<div class="ai-hero sec-hero ${G.locked ? 'live' : 'ok'}"><span class="ai-light"></span>
+    <div class="ai-hero-t"><b>${G.locked ? 'Locked for this session' : 'Ready to edit'}</b><span>${G.locked ? 'Teams have been formed. Step timers can still change.' : 'Check everything here before forming teams.'}</span></div>
+    <div class="ai-hero-c"><span><i class="ic ic-user"></i>Code ${esc(G.code)}</span><span><i class="ic ic-list"></i>${G.rounds} rounds</span><span><i class="ic ic-chat"></i>${esc(G.mediator)}</span></div></div>`;
 function practiceBadge(G){
   if (!G.bots) return '';
-  return `<div class="practice"><span><b>Practice data:</b> this session has ${G.bots} simulated student${G.bots === 1 ? '' : 's'}${G.real ? ` and ${G.real} real` : ''}. Before a real class, start a fresh session so practice data never mixes with real data.</span>
+  return `<div class="practice"><span><b>Practice data:</b> this session has ${G.bots} simulated student${G.bots === 1 ? '' : 's'}${G.real ? ` and ${G.real} real` : ''}. Start fresh before a real class.</span>
     <button class="mini" data-act="startfresh">Start fresh</button></div>`;
 }
 function guideModal(){
@@ -2484,19 +2752,18 @@ function renderAdmin(){
   if (tab === 'live') h += adminLive();
   if (tab === 'feed') h += adminFeed();
   if (tab === 'watch'){ S.wallData = protoWall(); S.wstats = S.watchPid ? (W = protoWatch((seatByPid(S.watchPid) || {}).id)) : null; h += adminWatch(); }
-  if (tab === 'projector') h += `<div class="card"><p>${ti('projector')} Show this on the lecture hall screen. It switches from the join code to team progress after teams are formed.</p><button class="mini dark" data-act="projector">Open full-screen projector view</button></div>` + projectorBody();
   if (tab === 'people') h += S.personPid ? personView(S.personPid) : peopleList();
-  if (tab === 'setup') h += adminSetup();
+  if (tab === 'setup') h += setupHero({locked:!S.lobbyOpen, code:S.settings.classCode, rounds:S.settings.rounds, mediator:'stand-in v0.2 (rule-based)'}) + adminSetup();
   if (tab === 'results') h += adminResults();
   if (tab === 'ai'){ const Ts = allTeams(), L = S.stats.log || [], fl = Ts.filter(T => T.pending).length;
-    h += aiTabHTML({config:{mediator:'stand-in v0.2 (rule-based)', real:false, model:null, endpoint:'', timeout_s:60, concurrency:8, reasoning:null, max_tokens:null, fallback:'the stand-in'},
+    h += aiTabHTML({config:{mediator:'stand-in v0.2 (rule-based)', real:false, model:null, endpoint:'', timeout_s:180, concurrency:8, reasoning:null, max_tokens:null, fallback:'the stand-in', arc_model_cap:10, arc_key_cap:20},
       now:{flight:S.archive ? 0 : fl, waiting:0}, totals:{calls:S.stats.calls, timeouts:S.stats.timeouts, fallbacks:0, peak_flight:S.stats.peakFlight || 0}, log:L,
       session:{rounds:S.settings.rounds, joined:Object.keys(S.seats).length, teams:Ts.length, mediated_teams:Ts.filter(T => COND[T.cond].mediator).length, mediated_share:S.settings.conds.filter(c => COND[c].mediator).length / Math.max(1, S.settings.conds.length)}}); }
-  if (tab === 'saved') h += savedTabHTML({list:SAVED.map(x => x.meta), arch:S.archive, defName:S.sessionId, canSave:Object.keys(S.seats).length > 0, note:'In this prototype, saved sessions last until you reload the page. The real app keeps each one as a folder on the server.',
+  if (tab === 'saved') h += savedTabHTML({list:SAVED.map(x => x.meta), arch:S.archive, defName:S.sessionId, canSave:Object.keys(S.seats).length > 0, note:'In this prototype, saved sessions are lost when you reload the page.',
     zip:m => `<button class="mini" data-act="zipsaved" data-id="${m.id}"><i class="ic ic-download"></i>Download folder (.zip)</button>`});
   if (S.showGuide) h += guideModal();
   const nFin = analysedTeams().filter(T => T.final).length;
-  if (tab === 'charts' && !nFin) h += emptyState('No results yet', 'Charts fill in as soon as the first team finishes. Want to see what they look like? Start a practice run: it plays a whole session with simulated students in a few minutes.', allTeams().length ? '<button class="mini" data-act="admtab" data-tab="live">Back to the session</button>' : '<button class="mini dark" data-act="practice">Start a practice run</button>');
+  if (tab === 'charts' && !nFin) h += emptyState('No results yet', 'Charts fill in when the first team finishes.', allTeams().length ? '<button class="mini" data-act="admtab" data-tab="live">Back to the session</button>' : '<button class="mini dark" data-act="practice">Start a practice run</button>');
   else if (tab === 'charts') h += `<div class="inline" style="justify-content:space-between;margin-bottom:6px"><span class="small muted">${ti('ch_tab')} Charts count finished, non-spare teams.</span><span><label class="chip"><input type="checkbox" data-act="consentonly" ${S.consentOnly ? 'checked' : ''}> Consenting teams only</label></span></div>` + window.renderCharts(chartsData(), ti);
   if (S.showCopy) h += `<div class="card"><p class="small muted">Copy this text:</p><pre class="json">${esc(S.showCopy)}</pre><button class="mini" data-act="hidecopy">Close</button></div>`;
   return h;
@@ -2513,15 +2780,15 @@ function adminLive(){
   const G = {lobbyOpen:S.lobbyOpen, joined:seats.length, answered:seats.filter(x => x.consent !== null).length, teams:Ts.length, finished, bots:nB, real:seats.length - nB,
     hideCond:S.hideCond, help:seats.filter(x => x.help).length, paused:S.paused, auto:S.autoSpeed, mediator:'stand-in v0.2 (rule-based)', rounds:nR, totalMin, code:S.settings.classCode,
     setupSeen:SETUP_SEEN(), collapsed:RS_COL(), projectorBtn:'<button class="mini dark" data-act="projector">Open projector view</button>'};
-  let h = (S.archive ? '' : practiceBadge(G) + runSheet(G) + simPanelHTML({on, speed:S.autoSpeed, sp, canStart:!!(seats.length || Ts.length), total:totalMin, paused:S.paused, teams:Ts.length, finished})) + `<div class="stats">
+  let h = (S.archive ? '' : liveHero({...G, running:!!S.clockRate, stuck}) + projBar(G.code) + practiceBadge(G) + runSheet(G) + simPanelHTML({on, speed:S.autoSpeed, sp, canStart:!!(seats.length || Ts.length), total:totalMin, paused:S.paused, teams:Ts.length, finished})) + `<div class="stats">
       <div class="stat"><b>${seats.length}</b><span>Joined (${consented} yes · ${declined} no)${ti('joined')}</span></div>
       <div class="stat"><b>${finished} / ${Ts.length}</b><span>Teams finished${ti('finished')}</span></div>
       <div class="stat"><b style="color:${stuck ? 'var(--warn)' : 'inherit'}">${stuck}</b><span>Teams waiting over 2 min${ti('stuck')}</span></div>
       <div class="stat"><b>${S.stats.calls}</b><span>AI calls · ${lat == null ? '—' : lat + 's avg'} · ${S.stats.queue} in queue · ${S.stats.timeouts} timeouts${ti('ai')}</span></div></div>`;
   if (S.lobbyOpen){
     h += `<div class="card"><h3 style="margin-top:0">Lobby is open${ti('lobby')}</h3>
-      ${S.hideCond ? '' : `<div class="types-note"><span><b>Deliberation types are showing.</b> Fine for testing. Before a real class, hide them so you treat every team the same.</span><button class="mini" data-act="hidecond">Hide types</button></div>`}
-      <p class="small muted">Students join with code <b>${S.settings.classCode}</b>, answer consent, and wait. When you form teams, consenting and non-consenting students go in separate teams. 1–2 leftovers become a spare team that is left out of analysis.</p>
+      ${S.hideCond ? '' : `<div class="types-note"><span><b>Deliberation types are showing.</b> Hide them before a real class.</span><button class="mini" data-act="hidecond">Hide types</button></div>`}
+      <p class="small muted">Class code <b>${S.settings.classCode}</b>.</p>
       <div class="inline">
       ${S.botBatches.length ? `<button class="mini" data-act="undobots">Undo last add (${S.botBatches[S.botBatches.length-1].length})</button>${ti('undo_bots')}` : ''}
       ${seats.some(x => x.bot) ? `<button class="mini" data-act="clearbots">Remove all simulated (${seats.filter(x => x.bot).length})</button>${ti('clear_bots')}` : ''}
@@ -2541,15 +2808,113 @@ function adminLive(){
         actions:`<button class="mini tb" data-act="admteam" data-team="${T.id}" title="Everything this team wrote and did"><i class="ic ic-list"></i>Log</button><button class="mini tb" data-act="admas" data-team="${T.id}" title="Open this team's player screen"><i class="ic ic-eye"></i>View</button>${ph !== 'Finished' && !T.pending ? `<button class="mini tb warn" data-act="admclose" data-team="${T.id}" title="Moves the team on without missing messages. Logged."><i class="ic ic-skip"></i>Close round</button>` : ''}`}; }), LIVE_OPTS, LIVE_GET).map(t => teamRow(t, S.hideCond)).join('');
     const TL = window.renderTimelines(Ts.map(T => { const act = activeRoles(T), done = act.every(r => T.roles[r].step === 'done');
       return {id:T.id, label:COND[T.cond].label, mediated:COND[T.cond].mediator, steps:act.map(r => T.roles[r].step), pending:T.pending, elapsed:teamClock(T) / 1000, spare:T.spare, nonconsent:T.nonconsent}; }), S.settings.rounds, {ti, hideCond:S.hideCond, timers:timersSet(), parts:true});
-    h += `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Teams${ti('teams')}</h3>
+    h += `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Teams${ti('timelines')}</h3>
         <span><button class="mini" data-act="hidecond">${S.hideCond ? 'Show types' : 'Hide types'}</button>${ti('hide_types')}<button class="mini" data-act="sim">Simulate one step</button>${ti('sim')}</span></div>
-      <p class="small muted">One row per team: who is on it, what each person is doing, and how far along the team is against the ${TL.total}-minute schedule. Click a person to open their log. "Close round" moves a team on without the missing messages and is flagged in the data.${ti('timelines')}</p>
       <div class="tr-top">${sortBar('live', LIVE_OPTS)}${TL.legend}</div>
       <div class="tr-tlhead">${TL.head}<div class="tl-side">Time · pace</div><div></div></div>
       <div class="tr-list tight">${rowsOf(TL)}</div></div>`;
   }
   return h;
 }
+/* ---------- projector: one big screen for the room. Join -> Progress -> Results ---------- */
+const PJ_TIPS = [
+  'Take your time. Careful work matters more than speed.',
+  'Stay in the app. Only what you write in the app counts.',
+  'Read every message before you send yours.',
+  'Stuck? Tap Need help and a researcher will come to you.',
+  'Please finish every step, including the short survey at the end.',
+  'Done early? Thank you. Please wait quietly for the other teams.',
+];
+const PJ = {mode:(() => { try { return localStorage.getItem('tds_pj_mode') || 'auto'; } catch(_){ return 'auto'; } })(), types:false, lastFin:null, toast:'', toastAt:0, charts:null, chartsAt:0};
+const PJ_NAMES = {join:'Join', work:'Progress', results:'Results'};
+function pjStepIdx(s, R){ if (!s || s === 'card') return 0; if (s.startsWith('post')) return 2 * roundOf(s) - 1; if (s.startsWith('wait')) return 2 * roundOf(s); return ({final:2 * R + 1, survey:2 * R + 2, done:2 * R + 3})[s] ?? 0; }
+const pjAuto = st => st.lobby_open ? 'join' : st.teams.length && st.finished >= st.teams.length ? 'results' : 'work';
+const pjMode = st => PJ.mode === 'auto' ? pjAuto(st) : PJ.mode;
+const pjPct = x => `${Math.round((x || 0) * 100)}%`;
+function pjControls(st){
+  const m = pjMode(st), b = (k, l) => `<button data-act="pjmode" data-v="${k}" class="${PJ.mode === k ? 'on' : ''}">${l}</button>`;
+  return `<div class="pj-ctl"><button class="pj-cb" data-act="admin">← Back to admin</button>
+    <span class="seg pj-seg">${b('auto', 'Auto' + (PJ.mode === 'auto' ? ' · ' + PJ_NAMES[m] : ''))}${b('join', 'Join')}${b('work', 'Progress')}${b('results', 'Results')}</span>
+    ${m === 'results' ? `<button class="pj-cb ${PJ.types ? 'on' : ''}" data-act="pjtypes">${PJ.types ? 'Hide' : 'Show'} deliberation types</button>` : ''}
+    <button class="pj-cb" data-act="pjfull"><i class="ic ic-screen"></i>${document.fullscreenElement ? 'Exit full screen' : 'Full screen'}</button>${Date.now() - (PJ.fsHint || 0) < 6000 ? '<span class="pj-hint">This browser blocked it. Press F11.</span>' : ''}</div>`;
+}
+const pjBanner = st => st.broadcast ? `<div class="pj-banner"><i class="ic ic-mega"></i>${esc(st.broadcast)}</div>` : '';
+function pjJoin(st){
+  return `<div class="pj pj-join"><div class="pj-kick">Join the session</div>
+    <div class="pj-joinrow"><div id="qr"></div><div class="pj-how"><div class="pj-l">Scan the code, or go to</div><div class="pj-url">${esc(location.host)}</div>
+      <div class="pj-l">and type</div><div class="pj-code">${esc(st.settings.class_code)}</div></div></div>
+    <div class="pj-count"><b>${st.joined}</b> ${st.joined === 1 ? 'person has' : 'people have'} joined</div>${pjBanner(st)}</div>`;
+}
+function pjWork(st){
+  const R = st.settings.rounds, tot = 2 * R + 3, T = st.teams, left = T.length - st.finished;
+  const where = {card:0, write:0, wait:0, final:0, survey:0, done:0}; let sum = 0, n = 0;
+  T.forEach(t => t.steps.forEach(s => { sum += pjStepIdx(s, R) / tot; n++; const k = s.startsWith('post') ? 'write' : s.startsWith('wait') ? 'wait' : s; if (k in where) where[k]++; }));
+  if (PJ.lastFin != null && st.finished > PJ.lastFin){
+    PJ.toast = left === 0 ? 'Every team is done!' : st.finished === 1 ? 'The first team just finished!' : st.finished * 2 >= T.length && (st.finished - 1) * 2 < T.length ? 'Halfway there!' : `Another team finished. ${left} to go!`;
+    PJ.toastAt = Date.now();
+  }
+  PJ.lastFin = st.finished;
+  const W = [['card','Reading the brief'],['write','Writing'],['wait','Waiting for teammates'],['final','Final decision'],['survey','Survey'],['done','Done']];
+  return `<div class="pj pj-work">
+    ${Date.now() - PJ.toastAt < 8000 ? `<div class="pj-toast"><i class="ic ic-check"></i>${PJ.toast}</div>` : ''}
+    <div class="pj-big">${st.finished} of ${T.length} teams finished</div>
+    <div class="pj-sub">${left ? `${left} team${left === 1 ? '' : 's'} still working. Keep going!` : 'Every team is done. Thank you!'}</div>
+    <div class="pj-bar"><i style="width:${n ? sum / n * 100 : 0}%"></i></div><div class="pj-barl"><span>Class progress</span><b>${pjPct(n ? sum / n : 0)}</b></div>
+    <div class="pj-where">${W.map(([k, l]) => `<span><b>${where[k]}</b>${l}</span>`).join('')}</div>
+    <div class="pj-teams">${T.map(t => { const p = t.steps.length ? t.steps.reduce((a, s) => a + pjStepIdx(s, R), 0) / (t.steps.length * tot) : 0;
+      return `<div class="pj-team ${t.done ? 'done' : ''}"><span>${t.done ? '<i class="ic ic-check"></i>' : ''}Team ${t.id}</span><i style="--p:${Math.round(p * 100)}%"></i></div>`; }).join('')}</div>
+    ${left ? `<div class="pj-tip"><i class="ic ic-flag"></i><span>${PJ_TIPS[Math.floor(Date.now() / 12000) % PJ_TIPS.length]}</span></div>` : ''}
+    ${pjBanner(st)}<div class="pj-clock">Session time ${st.clock == null ? '0:00' : fmtT(st.clock)}</div></div>`;
+}
+function pjResults(st){
+  const D = PJ.charts;
+  if (!D) return '<div class="pj"><div class="pj-sub">Loading the results…</div></div>';
+  const all = D.conds.flatMap(c => c.teams.map(t => ({...t, c})));
+  if (!all.length) return `<div class="pj"><div class="pj-big">Results show up here</div><div class="pj-sub">as soon as the first team finishes.</div></div>`;
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const avg = mean(all.map(t => t.frac)), best = Math.max(...all.map(t => t.frac));
+  const facts = all.reduce((a, t) => a + t.facts, 0), used = all.reduce((a, t) => a + t.steps.actioned, 0);
+  const fh = all.filter(t => t.felt_heard != null).map(t => t.felt_heard);
+  const rows = [['Best possible design', 1, 'top'], ['Best team in the room', best, ''], ['Your class, on average', avg, 'you'], ['Best one engineer could do alone', D.single_frac, ''], ['Using only the shared table', D.naive_frac, '']].sort((a, b) => b[1] - a[1]);
+  const opt = (D.opt_set || []).map(id => F(id)).filter(Boolean), cost = opt.reduce((a, f) => a + f.price, 0);
+  const notAll = D.totals.finished < D.totals.teams;
+  return `<div class="pj pj-res"><div class="pj-kick">How did your class do?</div>
+    <div class="pj-big">Your designs reached <span class="pj-hl">${pjPct(avg)}</span> of the best possible design</div>
+    ${notAll ? `<div class="pj-sub">So far: ${D.totals.finished} of ${D.totals.teams} teams finished.</div>` : ''}
+    <div class="pj-cmp">${rows.map(([l, v, k]) => `<div class="pj-cr ${k}"><span>${l}</span><div class="pj-cb2"><i style="width:${v * 100}%"></i></div><b>${pjPct(v)}</b></div>`).join('')}</div>
+    <div class="pj-dots"><div class="pj-dl">Each dot is one team</div><div class="pj-scale">${all.map(t => `<i style="left:${t.frac * 100}%" title="Team ${t.id}"></i>`).join('')}<span style="left:0">0%</span><span style="left:50%">50%</span><span style="left:100%">100%</span></div></div>
+    <div class="pj-facts"><div class="pj-fact"><b>${facts ? pjPct(used / facts) : '—'}</b><span>of everyone's secret test results ended up in a final design</span></div>
+      ${fh.length ? `<div class="pj-fact"><b>${pjPct(mean(fh))}</b><span>of you felt heard by your team</span></div>` : ''}
+      <div class="pj-fact"><b>${all.length}</b><span>team${all.length === 1 ? '' : 's'} counted</span></div></div>
+    <div class="pj-lesson">Each of you had test results that no one else on your team had. The best design needs all of them.</div>
+    ${opt.length ? `<div class="pj-opt"><div class="pj-dl">The best possible design · $${cost}</div><div class="pj-chips">${opt.map(f => `<span><b>${f.id}</b>${esc(f.name)}</span>`).join('')}</div></div>` : ''}
+    ${PJ.types ? `<div class="pj-types">${D.conds.filter(c => c.teams.length).map(c => `<div class="pj-cr"><span><i class="pj-sw" style="background:${c.color}"></i>${esc(c.label)} · ${c.teams.length} team${c.teams.length === 1 ? '' : 's'}</span><div class="pj-cb2"><i style="width:${mean(c.teams.map(t => t.frac)) * 100}%;background:${c.color}"></i></div><b>${pjPct(mean(c.teams.map(t => t.frac)))}</b></div>`).join('')}</div>` : ''}
+    <div class="pj-thanks">Thank you for taking part!</div></div>`;
+}
+/* The control bar lives outside #app so the once-a-second redraw never swaps a button out from under a click. */
+function pjCtl(st){
+  let c = document.getElementById('pjctl');
+  if (!st){ if (c) c.remove(); return; }
+  if (!c){ c = document.createElement('div'); c.id = 'pjctl'; document.body.appendChild(c); }
+  const h = pjControls(st); if (c._h !== h){ c.innerHTML = h; c._h = h; }
+}
+function pjPage(st){
+  const m = pjMode(st);
+  return m === 'join' ? pjJoin(st) : m === 'results' ? pjResults(st) : pjWork(st);
+}
+(function(){   // projector controls show while the mouse moves, then fade so they are not on the big screen
+  let t = null; const wake = () => { document.body.classList.add('pj-awake'); clearTimeout(t); t = setTimeout(() => document.body.classList.remove('pj-awake'), 3000); };
+  document.addEventListener('mousemove', wake); document.addEventListener('keydown', wake);
+  document.addEventListener('fullscreenchange', () => render());
+  if (document.body) wake(); else document.addEventListener('DOMContentLoaded', wake);
+})();
+/* prototype: the same data the server sends the projector */
+function pjState(){
+  const Ts = allTeams(), teams = Ts.map(T => { const st = activeRoles(T).map(r => T.roles[r].step); return {id:T.id, steps:st, done:st.every(s => s === 'done')}; });
+  return {lobby_open:S.lobbyOpen, joined:Object.keys(S.seats).length, settings:{rounds:S.settings.rounds, class_code:S.settings.classCode}, broadcast:S.broadcast,
+    teams, finished:Ts.filter(T => teamPhase(T)[0] === 'Finished').length, clock:S.sessionStart ? clockNow() : null};
+}
+function pjCharts(){ const keep = S.consentOnly; S.consentOnly = false; try { return {...chartsData(), opt_set:OPT.set}; } finally { S.consentOnly = keep; } }
 function projectorBody(){
   const n = Object.keys(S.seats).length, Ts = allTeams();
   if (S.lobbyOpen) return `<div class="card proj"><div class="muted">Join at this page and enter the code</div><div class="big">${S.settings.classCode}</div><div id="qr"></div><div class="huge">${n} joined</div></div>`;
@@ -2564,7 +2929,7 @@ function adminSetup(){
       <div class="inline"><label>Class code${ti('class_code')} <input type="text" id="ccode" value="${esc(st.classCode)}" style="width:120px" ${locked ? 'disabled' : ''}></label>
       <label>Discussion rounds${ti('rounds')} <input type="number" id="rounds" min="1" max="4" value="${st.rounds}" ${locked ? 'disabled' : ''}></label>
       <button class="mini dark" data-act="savesetup" ${locked ? 'disabled' : ''}>Save</button></div>
-      <p class="small muted">${locked ? 'Locked because teams have been formed.' : 'The simulation uses 3 rounds. The class plan uses 2.'}</p></div>
+      <p class="small muted">${locked ? 'Locked because teams have been formed.' : ''}</p></div>
     <div class="card"><h3 style="margin-top:0">Deliberation types${ti('types')}</h3>
       <p class="small muted">Spread evenly in a random order across teams when you form them.</p>
       <div class="inline">${COND_KEYS.map(c => `<label class="chip"><input type="checkbox" data-act="cond" data-list="conds" value="${c}" ${st.conds.includes(c) ? 'checked' : ''} ${locked ? 'disabled' : ''}> ${COND[c].label}</label>`).join('')}</div>
@@ -2572,7 +2937,9 @@ function adminSetup(){
       <div class="inline">If fewer than <input type="number" id="thresh" min="0" max="500" value="${st.threshold}" ${locked ? 'disabled' : ''}> students join, use only:</div>
       <div class="inline" style="margin-top:6px">${COND_KEYS.map(c => `<label class="chip"><input type="checkbox" data-act="cond" data-list="fallback" value="${c}" ${st.fallback.includes(c) ? 'checked' : ''} ${locked ? 'disabled' : ''}> ${COND[c].label}</label>`).join('')}</div></div>
     ${timerSetup()}
-    <div class="card"><h3 style="margin-top:0">Mediator${ti('mediator')}</h3><p class="small">Prompt version: <b>stand-in v0.2 (rule-based)</b>. The real app will use the prompts from Inan's mediators.py, with a version saved for each session.</p></div>
+    <div class="card"><h3 style="margin-top:0">Mediator${ti('mediator')}</h3><p class="small">Running now: <b>stand-in v0.2 (rule-based)</b></p>
+      <div class="inline" style="margin-top:8px"><select id="medsel" aria-label="Mediator model" disabled><option>Stand-in (no AI)</option></select></div>
+      <p class="small muted">This prototype has no server, so it only runs the stand-in. In the real app you pick an ARC model here, test it, and use it for the session.</p></div>
     <div class="card"><h3 style="margin-top:0">Start over</h3><p class="small muted">Clears all students, teams and data in this demo.</p><button class="mini" data-act="reset">Reset everything</button></div>`;
 }
 function timerSetup(){
@@ -2580,7 +2947,7 @@ function timerSetup(){
   const f = (k, l) => `<label>${l}<span class="tm-in"><input type="number" id="tm_${k}" min="0.5" max="30" step="0.5" value="${t[k]}"> min</span></label>`;
   const total = t.card + t.round1 + t.round * Math.max(0, n - 1) + n + t.final + t.survey;
   return `<div class="card"><h3 style="margin-top:0">Step timers${ti('timers')}</h3>
-    <p class="small muted">Each player sees a countdown for the step they are on. At 1 minute left and at time's up they get a pop-up and the timer changes color. Nobody is cut off. You can change these at any time.</p>
+    <p class="small muted">Nobody is cut off when time runs out.</p>
     <label class="chip"><input type="checkbox" id="tm_on" ${t.on ? 'checked' : ''}> Show timers and automatic reminders</label>
     <div class="tm-grid">${f('card','Read brief')}${f('round1','Round 1')}${f('round','Later rounds')}${f('final','Final decision')}${f('survey','Survey')}</div>
     <p class="small muted">Whole session: about <b>${total} min</b> including about 1 min per round for the Mediator.</p>
@@ -2719,12 +3086,11 @@ function wPicker(){
 }
 function wGo(pid){ S.watchPid = pid; S.watchTab = null; S.wLastStep = null; S.watchMode = 'screen'; render(); }
 function adminWatch(){
-  if (!((S.wallData && S.wallData.players) || []).length) return emptyState('Nobody to watch yet', 'Players show up here as soon as teams are formed. You can watch anyone, real or simulated, and see exactly what is on their screen.', '<button class="mini" data-act="admtab" data-tab="live">Go to the session</button><button class="mini dark" data-act="practice">Start a practice run</button>');
+  if (!((S.wallData && S.wallData.players) || []).length) return emptyState('Nobody to watch yet', 'Players show up here once teams are formed.', '<button class="mini" data-act="admtab" data-tab="live">Go to the session</button><button class="mini dark" data-act="practice">Start a practice run</button>');
   const P = (S.wallData && S.wallData.players) || [], teams = [...new Set(P.map(p => p.team))].sort((a, b) => a - b), f = S.wf;
   const conds = [...new Set(P.map(p => p.cond))];
   return `<div class="card"><div class="inline" style="justify-content:space-between;flex-wrap:wrap;gap:10px"><h3 style="margin:0">Watch players${ti('watch')}</h3>
       <span class="seg"><button data-act="wmode" data-v="screen" class="${S.watchMode === 'screen' ? 'on' : ''}">One screen</button><button data-act="wmode" data-v="wall" class="${S.watchMode === 'wall' ? 'on' : ''}">Wall (everyone)</button></span></div>
-    <p class="small muted" style="margin:6px 0 10px">You see exactly what the player sees, live. Dark "Admin" labels and the top bar are extra info only you get. You can switch their tabs to look around, but you can't type or click for them.</p>
     <div class="fd-filters"><select id="wf-cond"><option value="">All conditions</option>${conds.map(c => `<option value="${c}" ${f.cond === c ? 'selected' : ''}>${S.hideCond ? 'Type ' + (conds.indexOf(c) + 1) : condLbl(c)}</option>`).join('')}</select>
       <select id="wf-kind"><option value="">Real and simulated</option><option value="real" ${f.kind === 'real' ? 'selected' : ''}>Real students only</option><option value="sim" ${f.kind === 'sim' ? 'selected' : ''}>Simulated only</option></select>
       <select id="wf-team"><option value="">All teams</option>${teams.map(t => `<option value="${t}" ${f.team === String(t) ? 'selected' : ''}>Team ${t}</option>`).join('')}</select>
@@ -2734,6 +3100,33 @@ function adminWatch(){
     <div class="card w-stats" id="w-stats">${wStats()}</div></div>`}`;
 }
 
+/* Results: the four steps as one small card per type (bars step down from Spoken to Actioned),
+   and the extra checks as a shaded grid. Both fit the page width, so nothing scrolls sideways.
+   rows = [{label, cond, n, s:[spoken, heard, integrated, actioned], ex:{mentioned, to_mediator, relayed, heard_recalled, recalled, final_follows}}]
+   (an ex value of null means the check does not apply to that type) */
+const STEP_NAMES4 = [['Spoken','spoken'], ['Heard','heard'], ['Integrated','integrated'], ['Actioned','actioned']];
+const EXTRA_CHECKS = [['Mentioned','mentioned','mentioned'], ['To Mediator','to_mediator','to_mediator'], ['Relayed by AI','relayed','relayed'],
+  ['Heard + recalled','heard_recalled','heard_recalled'], ['Recalled','recalled','recalled'], ['Final follows','final_follows','final_follows']];
+function stepsBlock(rows, tip, hide){
+  if (!rows.length) return {steps:'<p class="muted">No finished teams yet.</p>', extra:''};
+  const pc = (a, n) => n ? Math.round(a / n * 100) : 0;
+  const col = r => hide ? '#5b6070' : (CONDC[r.cond] || '#5b6070');
+  const legend = `<div class="fn-legend">${STEP_NAMES4.map(([l, k], i) => `<span><b>${i + 1}</b>${l}${tip(k)}</span>`).join('<i class="fn-arrow"></i>')}</div>`;
+  const cards = rows.map(r => `<div class="fn-card" style="--cc:${col(r)}">
+      <div class="fn-h"><i class="fn-dot"></i><b>${esc(r.label)}</b><small>${r.n} finding${r.n === 1 ? '' : 's'}</small></div>
+      <div class="fn-cols">${r.s.map((v, i) => { const p = pc(v, r.n), drop = i ? r.s[i - 1] - v : 0;
+        return `<div class="fn-col" title="${STEP_NAMES4[i][0]}: ${v} of ${r.n}"><span class="fn-v">${p}%</span><div class="fn-bar"><i style="height:${Math.max(p, 2)}%;--d:${i * 70}ms"></i></div>
+          <small>${STEP_NAMES4[i][0]}</small><em>${v} of ${r.n}${drop > 0 ? ` <u>−${drop}</u>` : ''}</em></div>`; }).join('')}</div>
+      <div class="fn-foot">In the final design: <b>${pc(r.s[3], r.n)}%</b></div></div>`).join('');
+  const cols = `minmax(118px,1.3fr) repeat(${rows.length}, minmax(0,1fr))`;
+  const grid = `<div class="hm" style="grid-template-columns:${cols}">
+      <div class="hm-h"></div>${rows.map(r => `<div class="hm-h hm-t" style="--cc:${col(r)}" title="${esc(r.label)}"><i class="fn-dot"></i>${esc(r.label)}</div>`).join('')}
+      ${EXTRA_CHECKS.map(([l, k, t]) => `<div class="hm-r">${l}${tip(t)}</div>${rows.map(r => { const v = r.ex[k];
+        if (v == null) return '<div class="hm-cell na" title="Does not apply to this type">—</div>';
+        const p = pc(v, r.n);
+        return `<div class="hm-cell ${p >= 55 ? 'hi' : ''}" style="--p:${p}" title="${l}: ${v} of ${r.n}"><b>${p}%</b><small>${v} of ${r.n}</small></div>`; }).join('')}`).join('')}</div>`;
+  return { steps: legend + `<div class="fn-grid">${cards}</div>`, extra: grid };
+}
 function adminResults(){
   const Ts = analysedTeams(), res = Ts.map(teamResult).filter(Boolean);
   const facts = Ts.filter(T => T.final).flatMap(factFunnel);
@@ -2746,20 +3139,19 @@ function adminResults(){
   });
   const f1 = (x, d) => x == null ? '—' : (+x).toFixed(d || 0);
   const leakTeams = res.filter(x => x.talked_outside_app).length;
+  const SB = stepsBlock(C.map(x => ({label:x.label, cond:x.c, n:x.n, s:[x.sm('spoken'), x.sm('heard'), x.sm('integrated'), x.sm('actioned')],
+    ex:{mentioned:x.sm('mentioned'), to_mediator:x.c === 'caucus' ? x.sm('disclosed_to_mediator') : null, relayed:COND[x.c].mediator ? x.sm('relayed_by_ai') : null,
+        heard_recalled:x.sm('heard_and_recalled'), recalled:x.sm('recalled'), final_follows:x.sm('final_follows')}})), ti, S.hideCond);
   return `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Which teams count</h3>
       <span><label class="chip"><input type="checkbox" data-act="consentonly" ${S.consentOnly ? 'checked' : ''}> Consenting teams only</label>${ti('consent_only')}</span></div>
       <p class="small muted">Spare and late teams are always left out of these tables. They are still in "Everything (JSON)".
       ${leakTeams ? `<b style="color:var(--warn)">${leakTeams} team(s) said they talked outside the app.</b> Their chat log may be missing part of the conversation.` : ''}</p></div>
     <div class="card"><h3 style="margin-top:0">The four steps, by deliberation type${ti('steps')}</h3>
-      <p class="small muted">Each team has 9 private findings. This table follows them through four steps. A finding only counts at a step if it also passed the step before, so the numbers can only go down from left to right.</p>
-      <div class="defs"><div><b>1. Spoken</b>Its owner said it, with the right direction (worth more or less).</div><div><b>2. Heard</b>It was on a teammate's screen for 2+ seconds. In caucus, only Mediator cards count.</div><div><b>3. Integrated</b>Afterward a teammate repeated it, changed picks its way, or the Mediator carried it.</div><div><b>4. Actioned</b>The final design follows it.</div></div>
-      <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th>1. Spoken${ti('spoken')}</th><th>2. Heard${ti('heard')}</th><th>3. Integrated${ti('integrated')}</th><th>4. Actioned${ti('actioned')}</th></tr></thead><tbody>
-      ${C.map(x => `<tr><td><b>${x.label}</b></td><td>${fb(x.sm('spoken'), x.n)}</td><td>${fb(x.sm('heard'), x.n)}</td><td>${fb(x.sm('integrated'), x.n)}</td><td>${fb(x.sm('actioned'), x.n)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No finished teams yet.</td></tr>'}</tbody></table></div>
+      <p class="small muted">A finding counts at a step only if it passed the step before.</p>
+      ${SB.steps}
       <h3>Extra checks${ti('extra')}</h3>
-      <p class="small muted">Each of these is counted on its own. It does not depend on any other step. A dash means it does not apply to that type.</p>
-      <div class="defs"><div><b>Mentioned</b>Named at all, even with no direction.</div><div><b>To Mediator</b>Said privately to the Mediator (caucus only).</div><div><b>Relayed by AI</b>The Mediator passed it on to the team.</div><div><b>Heard + recalled</b>Heard, and a teammate also ticked it in the survey. A stricter "heard".</div><div><b>Recalled</b>A teammate ticked it in the survey list.</div><div><b>Final follows</b>The final design follows it, however it got there.</div></div>
-      <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th>Mentioned${ti('mentioned')}</th><th>To Mediator${ti('to_mediator')}</th><th>Relayed by AI${ti('relayed')}</th><th>Heard + recalled${ti('heard_recalled')}</th><th>Recalled${ti('recalled')}</th><th>Final follows${ti('final_follows')}</th></tr></thead><tbody>
-      ${C.map(x => `<tr><td><b>${x.label}</b></td><td>${fb(x.sm('mentioned'), x.n)}</td><td>${x.c === 'caucus' ? fb(x.sm('disclosed_to_mediator'), x.n) : '—'}</td><td>${COND[x.c].mediator ? fb(x.sm('relayed_by_ai'), x.n) : '—'}</td><td>${fb(x.sm('heard_and_recalled'), x.n)}</td><td>${fb(x.sm('recalled'), x.n)}</td><td>${fb(x.sm('final_follows'), x.n)}</td></tr>`).join('')}</tbody></table></div></div>
+      <p class="small muted">Each is counted on its own. A dash means it does not apply.</p>
+      ${SB.extra}</div>
     <div class="card"><h3 style="margin-top:0">Points lost at each step (average per team)${ti('points')}</h3>
       <p class="small muted">Best possible is ${OPT.value} points; the shared table alone gives ${NAIVE_V}.</p>
       <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th class="num">Not spoken${ti('lost_spoken')}</th><th class="num">Not heard${ti('lost_heard')}</th><th class="num">Not integrated${ti('lost_integrated')}</th><th class="num">Final pick: wrong info${ti('lost_wrong')}</th><th class="num">Final pick: budget / other${ti('lost_other')}</th><th class="num">Final score${ti('final_score')}</th><th class="num">Wrong claims acted on${ti('wrong_claims')}</th></tr></thead><tbody>
@@ -2773,10 +3165,9 @@ function adminResults(){
       <button class="mini" data-act="copypeople">Participants CSV</button>${ti('participants_csv')}<button class="mini" data-act="copyevents">All events CSV</button>${ti('events_csv')}<button class="mini" data-act="copyall">Everything (JSON)</button>${ti('json')}</div>
       <h3>For the two human coders${ti('coders')}</h3><div class="inline"><button class="mini" data-act="copycoding">Coding sheet: all messages</button>${ti('coding_all')}</div></div>
     <div class="card"><h3 style="margin-top:0">Each team${ti('each_team')}</h3>
-      <p class="small muted">One row per finished team. Click a row to open that team's log. A negative number under "Points lost" means the team got lucky.</p>
       ${res.length ? `${sortBar('res', RES_OPTS)}<div class="tr-list">${sortRows('res', res.map(x => ({team:x.team, cond:x.condition, condText:COND[x.condition].label, set:String(x.final_set || '').split(' ').filter(Boolean), score:x.true_value, opt:OPT.value, facts:x.facts,
         steps:[x.spoken, x.heard, x.integrated, x.actioned], lostShare:x.lost_not_spoken + x.lost_not_heard + x.lost_not_integrated, lostFinal:x.lost_at_final_pick, wrong:'',
-        flags:[x.talked_outside_app ? 'Talked out loud' : '', x.closed_by_researcher ? 'Round closed' : ''].filter(Boolean)})), RES_OPTS, RES_GET).map(x => teamResultRow(x, S.hideCond)).join('')}</div>` : '<p class="muted">No team has finished yet.</p>'}
+        flags:[x.talked_outside_app ? 'Talked out loud' : '', x.closed_by_researcher ? 'Round closed' : '', x.mediator_fallbacks ? 'Stand-in answered' : ''].filter(Boolean)})), RES_OPTS, RES_GET).map(x => teamResultRow(x, S.hideCond)).join('')}</div>` : '<p class="muted">No team has finished yet.</p>'}
       <p class="small muted">Every row carries the session ID (${S.sessionId}) and participant IDs. No names are ever collected.</p></div>`;
 }
 function renderTeamLog(tid){
@@ -2789,7 +3180,7 @@ function renderTeamLog(tid){
   <div class="card small"><b>${COND[T.cond].label}:</b> ${COND[T.cond].about}</div>
   <div class="card"><h3 style="margin-top:0">Findings${ti('team_facts')}</h3><div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Finding</th><th>Feature</th><th>Mentioned${ti('mentioned')}</th><th>1. Spoken${ti('spoken')}</th><th>To Mediator${ti('to_mediator')}</th><th>Relayed${ti('relayed')}</th><th>2. Heard${ti('heard')}</th><th>Recalled${ti('recalled')}</th><th>3. Integrated${ti('integrated')}</th><th>4. Actioned${ti('actioned')}</th><th>Final follows${ti('final_follows')}</th></tr></thead>
     <tbody>${ff.map(x => `<tr><td><b>${x.fact}</b></td><td>${x.feature} (${x.direction})</td>${['mentioned','spoken','disclosed_to_mediator','relayed_by_ai','heard','recalled','integrated','actioned','final_follows'].map(k => `<td>${x[k] === 1 ? '✓' : x[k] === '' ? '—' : '·'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
-  <div class="card"><h3 style="margin-top:0">Everything saved${ti('team_log')}</h3><p class="small muted">Pseudonyms only. "Seen by" = on that member's screen 2+ seconds.</p>
+  <div class="card"><h3 style="margin-top:0">Everything saved${ti('team_log')}</h3>
     ${T.log.length ? `<div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Time</th><th>Round</th><th>Who</th><th>Kind</th><th>Text</th><th>Set</th><th>Seen by${ti('seen_by')}</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="muted">Nothing yet.</p>'}</div>`;
 }
 
@@ -2848,7 +3239,6 @@ function peopleList(){
     .filter(p => matchQ(S.peopleQ, [p.pid, p.label, p.team != null ? 'team ' + p.team : 'no team', S.hideCond ? '' : p.condText, p.bot ? 'simulated sim' : 'real student', p.persona, p.step, p.consent == null ? '' : p.consent ? 'consent yes' : 'no consent']));
   return `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">People · ${Object.keys(S.seats).length}${ti('people')}</h3>
       <button class="mini" data-act="copyevents">Copy all events (CSV)</button></div>
-    <p class="small muted">Click a person to see everything they did, in order, with times.</p>
     <input type="text" id="peopleq" placeholder="Search anything on a row: ID, role, nickname, team, type, step. Try caucus, team 4 or mechanical" value="${esc(S.peopleQ)}" style="margin-bottom:4px">${ppLegend()}${sortBar('people', PP_OPTS)}
     <div class="pp-list">${sortRows('people', P, PP_OPTS, PP_GET).map(p => personRow(p, S.hideCond)).join('') || '<p class="muted">No one yet.</p>'}</div></div>`;
 }
@@ -4132,12 +4522,15 @@ function render(){
     const wideView = S.view === 'admin' || S.view === 'projector' || (S.view === 'seat' && cur());
     app.classList.toggle('wide', !!wideView);
     app.innerHTML = S.view === 'join' ? renderJoin() : S.view === 'pin' ? renderPin()
-      : S.view === 'admin' ? renderAdmin() : S.view === 'projector' ? `<button class="mini" data-act="admin">← Back to admin</button>` + projectorBody()
+      : S.view === 'admin' ? renderAdmin() : S.view === 'projector' ? (() => { const st = pjState(); if (pjMode(st) === 'results') PJ.charts = pjCharts(); pjCtl(st); return pjPage(st); })()
       : renderSeat();
     document.getElementById('note').style.display = S.view === 'projector' ? 'none' : '';
+    if (S.view === 'admin') decorateSections(app);
+    document.documentElement.classList.toggle('is-proj', S.view === 'projector');
+    if (S.view !== 'projector') pjCtl(null);
     if (S.view === 'admin' && S.adminTab === 'watch' && S.watchMode === 'screen') watchDecorate();
     const qr = document.getElementById('qr');
-    if (qr && window.QRCode){ try { new QRCode(qr, {text:location.href.split('#')[0], width:200, height:200}); } catch(_){} }
+    if (qr && window.QRCode){ try { const qs = S.view === 'projector' ? 320 : 200; new QRCode(qr, {text:location.href.split('#')[0], width:qs, height:qs}); } catch(_){} }
     observeSeen();
   });
   reTip();
@@ -4186,6 +4579,7 @@ document.addEventListener('click', e => {
     case 'help': { const s = curSeat(); s.help = !s.help; track(s, 'help', {on:s.help}); return render(); }
     /* admin */
     case 'noop': return;
+    case 'aitest': window.AI_TEST_LOCAL = {ok:true, standin:true, note:'This prototype has no server, so it only runs the stand-in. Use the real app with MEDIATOR=llm to test ARC.', at:Date.now() / 1000}; return render();
     case 'ain': { const U = UIS(), cur = parseInt(U.aiN, 10) || +((document.getElementById('ain') || {}).value) || 90; U.aiN = Math.max(3, Math.min(600, cur + (+b.dataset.d))); return render(); }
     case 'sortby': sortClick(b); return render();
     case 'savesess': { const nm = ((document.getElementById('savename') || {}).value || '').trim() || S.sessionId; settleClock();
@@ -4219,6 +4613,9 @@ document.addEventListener('click', e => {
     case 'gotoreport': S.adminTab = 'charts'; render(); return setTimeout(() => window.ChartExport && window.ChartExport.openBuilder(), 250);
     case 'admtab': if (b.dataset.tab === 'setup') SETUP_MARK(); S.adminTab = b.dataset.tab; S.showCopy = null; return render();
     case 'projector': S.view = 'projector'; return render();
+    case 'pjmode': PJ.mode = b.dataset.v; try { localStorage.setItem('tds_pj_mode', PJ.mode); } catch(_){} return render();
+    case 'pjtypes': PJ.types = !PJ.types; return render();
+    case 'pjfull': if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => { PJ.fsHint = Date.now(); render(); setTimeout(render, 6000); }); return;
     case 'admteam': S.adminTeam = +b.dataset.team; render(); return window.scrollTo(0,0);
     case 'admback': S.adminTeam = null; return render();
     case 'admas': { const T = S.teams[+b.dataset.team]; return goSeat(T.roles[activeRoles(T)[0]].seat); }

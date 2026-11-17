@@ -15,7 +15,7 @@ from . import rules
 from . import mediator as M
 from . import students as SIM
 
-AI_TIMEOUT = float(os.environ.get("AI_TIMEOUT", "60"))   # seconds before falling back to the stand-in
+AI_TIMEOUT = float(os.environ.get("AI_TIMEOUT", "180"))  # seconds for a whole Mediator turn (retries included) before the stand-in answers
 AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "8"))
 STUCK_S = 120
 PID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -43,6 +43,7 @@ class Game:
         self.db = db
         self.lock = asyncio.Lock()
         self.mediator = M.make()
+        self.llm = self.mediator if self.mediator.real else None     # one ARC client, reused when the model changes
         self.fallback = M.StandIn()
         self.sem = asyncio.Semaphore(AI_CONCURRENCY)
         self.dirty, self.dirty_all, self.admin_dirty = set(), False, False
@@ -52,6 +53,36 @@ class Game:
             self._load(row)
         else:
             self.new_session()
+        self.mediator_note = ""
+        if self.settings.get("mediator_model"):               # the model picked on the Setup tab, kept across restarts
+            try:
+                self.choose_mediator(self.settings["mediator_model"])
+            except ValueError as e:
+                self.mediator_note = str(e)
+
+    # ------------------------------------------------------------ Mediator choice (admin Setup tab)
+    def get_llm(self):
+        if self.llm is None and M.available():
+            self.llm = M.LLM()
+        return self.llm
+
+    def mediator_choice(self):
+        return self.mediator.model if self.mediator.real else M.STANDIN
+
+    def mediator_locked(self):
+        """The model may only change before teams exist, so one session never mixes two Mediators."""
+        return bool(self.teams) or not self.lobby_open
+
+    def choose_mediator(self, choice):
+        if choice == M.STANDIN:
+            self.mediator = M.StandIn()
+        else:
+            llm = self.get_llm()
+            if llm is None:
+                raise ValueError("This server has no ARC key, so only the stand-in can run. Add ARC_API_KEY and ARC_API_BASE to team_session/.env and restart.")
+            llm.set_model(choice)
+            self.mediator = llm
+        self.settings["mediator_model"] = choice
 
     # ------------------------------------------------------------ session
     def new_session(self, settings=None):
@@ -78,10 +109,15 @@ class Game:
         for k in ("settings", "lobby_open", "paused", "broadcast", "session_start", "used_conds", "next_team", "stats", "clock_acc"):
             setattr(self, k, st[k])
         self.bot_batches = st.get("bot_batches", [])
+        self.auto_speed = st.get("auto_speed", 0)
+        self.pause_at = st.get("pause_at")
         self.seats = {s["pid"]: s for s in self.db.seats(self.sid)}
         self.tokens = {s["token"]: s["pid"] for s in self.seats.values()}
         self.teams = {T["id"]: T for T in self.db.teams(self.sid)}
         self._resume = [T["id"] for T in self.teams.values() if T.get("pending")]
+        # The clock restarts from the banked time; the time the server was down does not count.
+        self.clock_at, self.clock_rate = None, 0.0
+        self.settle_clock()
 
     async def resume_pending(self):
         """After a restart: re-run any Mediator call that was in flight."""
@@ -96,6 +132,7 @@ class Game:
         self.db.save_session(self.sid, self.created, self.settings["class_code"], {
             "settings": self.settings, "lobby_open": self.lobby_open, "paused": self.paused, "broadcast": self.broadcast,
             "session_start": self.session_start, "clock_acc": self.clock_now(), "used_conds": self.used_conds, "next_team": self.next_team, "bot_batches": self.bot_batches,
+            "auto_speed": self.auto_speed, "pause_at": self.pause_at,
             "stats": {**self.stats, "lat": self.stats["lat"][-200:]}})
 
     def save_seat(self, s):
@@ -344,7 +381,7 @@ class Game:
 
         t0, err, status = time.time(), None, "ok"
         t_enq = t_enq or t0
-        use = {"n": 0, "in": 0, "out": 0, "req_bytes": 0, "resp_bytes": 0}
+        use = {"n": 0, "in": 0, "out": 0, "req_bytes": 0, "resp_bytes": 0, "calls": []}
         M.USAGE.set(use)
         prompt_chars = 1400 + sum(len(e.get("text") or "") for e in T["log"])      # rough size of what a model is sent
         async with self.sem:
@@ -354,12 +391,15 @@ class Game:
             try:
                 out = await asyncio.wait_for(call(self.mediator), AI_TIMEOUT)
             except Exception as e:  # noqa: BLE001  (timeout, network, bad reply)
-                err = f"{type(e).__name__}: {e}"
-                status = "timeout" if isinstance(e, asyncio.TimeoutError) else "error"
+                err = f"{type(e).__name__}: {e}"[:500]
+                # timeout: the whole turn ran past AI_TIMEOUT. network: ARC/VPN/busy/setup. model: no usable bundle.
+                status = "timeout" if isinstance(e, asyncio.TimeoutError) else M.failure_kind(e)
                 if isinstance(e, asyncio.TimeoutError):
                     self.stats["timeouts"] += 1
                 self.stats["fallbacks"] += 1
                 out = await call(self.fallback)
+                if hasattr(self.mediator, "remember_fallback"):
+                    self.mediator.remember_fallback(T, (out.get("text") or "") if isinstance(out, dict) else str(out or ""))
             finally:
                 self.stats["flight"] = max(0, self.stats.get("flight", 1) - 1)
             t_done = time.time()
@@ -374,22 +414,30 @@ class Game:
             log.append({"i": len(log) + 1, "ts": round(t_enq, 2), "clock": round(self.team_clock(T), 1) if hasattr(self, "team_clock") else None, "team": tid, "cond": c, "round": n, "kind": kind,
                         "model": self.mediator.name, "status": status, "error": err, "wait_s": round(t_run - t_enq, 2), "model_s": round(t_done - t_run, 2),
                         "tok_in": use["in"] if real else round(prompt_chars / 4), "tok_out": use["out"] if real else round(len(reply) / 4), "est": not real,
-                        "bytes_out": use["req_bytes"] if real else prompt_chars, "bytes_in": use["resp_bytes"] if real else len(reply.encode("utf-8"))})
+                        "bytes_out": use["req_bytes"] if real else prompt_chars, "bytes_in": use["resp_bytes"] if real else len(reply.encode("utf-8")),
+                        # what this turn took at the model: requests sent, network/busy retries, bundle repairs, empty replies
+                        "requests": len(use["calls"]), "retries": sum(1 for x in use["calls"] if x.get("attempt", 1) > 1),
+                        "repairs": sum(1 for x in use["calls"] if "(repair)" in x.get("purpose", "") and x.get("attempt", 1) == 1),
+                        "empty": sum(1 for x in use["calls"] if "reply" in x and not (x["reply"] or "").strip()),
+                        "finish": next((x.get("finish_reason") for x in reversed(use["calls"]) if x.get("finish_reason")), None)})
             self.stats["log"] = log[-600:]
-            self._apply_round(T, n, out, err)
+            for rec in use["calls"]:                   # every real request, kept with the team (exports: ai_calls.csv)
+                T.setdefault("ai_calls", []).append({"turn": log[-1]["i"], "round": n, "kind": kind, **rec})
+            self._apply_round(T, n, out, err, status)
             self.check_steps()
             self.save_team(T)
             self.save_session()
         if self.on_change:
             await self.on_change()
 
-    def _apply_round(self, T, n, out, err=None):
+    def _apply_round(self, T, n, out, err=None, status=None):
         rounds, c = self.settings["rounds"], T["cond"]
         last = n == rounds
         by = ", ".join(C.ROLES[r]["short"] for r in self.active(T))
         meta = {"mediator": (self.fallback.name if err else self.mediator.name)} if out is not None else {}
         if err:
             meta["mediator_error"] = err
+            meta["mediator_failure"] = status          # timeout / network / model: the stand-in answered this turn
         if c == "caucus":
             d = {"round": n, **out}
             T["drafts"].append(d)
@@ -717,20 +765,44 @@ class Game:
         behind = [C.ROLES[k]["short"] for k in self.active(T) if T["roles"][k]["step"] != f"wait{n}"]
         return f"Waiting on {', '.join(behind)}" if behind else ""
 
+    def _ai_requests(self):
+        """Every request sent to the real model this session (from each team's ai_calls)."""
+        calls = [c for T in self.teams.values() for c in T.get("ai_calls", [])]
+        errs = [(c.get("error") or "").lower() for c in calls if c.get("error")]
+        kind = lambda t: ("gateway" if "read timeout" in t else "vpn" if "vpn" in t else "busy" if any(m in t for m in ("429", "concurrent", "queue", "503", "502"))
+                          else "timeout" if "timed out" in t or "timeout" in t else "setup" if any(m in t for m in ("401", "403", "not found")) else "other")
+        fin, models, errk = {}, {}, {}
+        for c in calls:
+            if c.get("finish_reason"):
+                fin[c["finish_reason"]] = fin.get(c["finish_reason"], 0) + 1
+            if c.get("model_returned"):
+                models[c["model_returned"]] = models.get(c["model_returned"], 0) + 1
+        for t in errs:
+            errk[kind(t)] = errk.get(kind(t), 0) + 1
+        return {"n": len(calls), "answered": sum(1 for c in calls if "reply" in c), "errors": len(errs), "error_kinds": errk,
+                "retries": sum(1 for c in calls if c.get("attempt", 1) > 1),
+                "repairs": sum(1 for c in calls if "(repair)" in c.get("purpose", "") and c.get("attempt", 1) == 1),
+                "empty": sum(1 for c in calls if "reply" in c and not (c["reply"] or "").strip()),
+                "finish": fin, "models": models}
+
     def ai_view(self):
-        """Everything about the Mediator backend, for the admin "AI backend" tab."""
+        """Everything about the Mediator backend, for the admin "AI status" tab."""
         med = self.mediator
-        real = hasattr(med, "client")
+        real = getattr(med, "real", False)
         base = os.environ.get("ARC_API_BASE", "") if real else ""
         host = re.sub(r"^https?://", "", base).split("/")[0] if base else ""
         conds = self.settings["conds"]
         teams = [T for T in self.teams.values()]
         flight = self.stats.get("flight", 0)
         return {"config": {"mediator": med.name, "real": real, "model": getattr(med, "model", None), "endpoint": host, "timeout_s": AI_TIMEOUT, "concurrency": AI_CONCURRENCY,
-                           "reasoning": getattr(med, "effort", None), "max_tokens": 1500 if real else None, "fallback": self.fallback.name},
+                           "reasoning": getattr(med, "effort", None) or None, "max_tokens": getattr(med, "max_tokens", None), "request_timeout_s": getattr(med, "req_timeout", None),
+                           "temperature": getattr(med, "temperature", None), "fallback": self.fallback.name, "test": self.stats.get("ai_test"),
+                           "arc_model_cap": 10, "arc_key_cap": 20, "arc": "arc.vt.edu" in base},
                 "now": {"flight": flight, "waiting": max(0, self.stats["queue"] - flight)},
-                "totals": {"calls": self.stats["calls"], "timeouts": self.stats["timeouts"], "fallbacks": self.stats["fallbacks"], "peak_flight": self.stats.get("peak_flight", 0)},
+                "totals": {"calls": self.stats["calls"], "timeouts": self.stats["timeouts"], "fallbacks": self.stats["fallbacks"], "peak_flight": self.stats.get("peak_flight", 0),
+                           "by_failure": {k: sum(1 for x in self.stats.get("log", []) if x["status"] == k) for k in ("timeout", "network", "model")}},
                 "log": self.stats.get("log", []),
+                "requests": self._ai_requests(),
                 "session": {"rounds": self.settings["rounds"], "joined": len(self.seats), "teams": len(teams), "mediated_teams": sum(1 for T in teams if C.COND[T["cond"]]["mediator"]),
                             "mediated_share": (sum(1 for c in conds if C.COND[c]["mediator"]) / len(conds)) if conds else 0, "start": self.session_start}}
 
@@ -992,7 +1064,7 @@ class Game:
                         "msgs": {"count": n_msg, "per_person": n_msg / people if people else 0, "words": words / n_msg if n_msg else 0,
                                  "secs": sum(secs) / len(secs) if secs else 0}})
         studs = [r for T in Ts for r in self.active(T)]
-        return {"updated": now() * 1000, "consent_only": consent_only, "opt": rules.OPT_V, "naive_pts": rules.NAIVE_V,
+        return {"updated": now() * 1000, "consent_only": consent_only, "opt": rules.OPT_V, "opt_set": list(rules.OPT_SET), "naive_pts": rules.NAIVE_V,
                 "session": self.sid, "mediator": self.mediator.name, "rounds": self.settings["rounds"], "single_pts": rules.SINGLE_V,
                 "simulated_students": sum(1 for T in Ts for r in self.active(T) if self.seat_of(T, r)["bot"]),
                 "excluded": {"spare": sum(1 for T in self.teams.values() if T.get("spare")),

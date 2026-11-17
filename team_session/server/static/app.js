@@ -40,7 +40,7 @@ const TIPS = {
   rounds:'How many times each team posts before the final decision. The simulation uses 3; the class plan uses 2.',
   types:'Which ways of running the discussion to use. Teams get them evenly, in a random order.',
   headcount:'If fewer students than this join, the app uses only the types you tick here, so each type still gets enough teams.',
-  mediator:'Which Mediator is running: the simple rules version for testing, or the real AI.',
+  mediator:'Which Mediator runs this session: the rule-based stand-in for testing, or a model on VT ARC. Pick it before forming teams; it stays fixed for the session.',
   new_session:'Starts over with an empty lobby and a new session ID. Old data stays saved.',
   /* results */
   consent_only:'When ticked, the tables only count teams where everyone said yes to sharing their data.',
@@ -78,6 +78,7 @@ const TIPS = {
   messages_csv:'Every message and Mediator card, and who saw each one.',
   participants_csv:'One row per person: ID, consent, team, role, and survey answers.',
   events_csv:'Every single action each person took, with times.',
+  ai_calls_csv:'Every request sent to the real AI: the prompt, the reply, its reasoning, the model, the time, tokens, and any error. Empty with the stand-in.',
   json:'All of the data in one file.',
   db:'The whole database file. It includes everyone, even students who said no, so keep it private.',
   coders:'Sheets for two people to check the app\'s automatic codes by hand.',
@@ -133,6 +134,7 @@ let ARCH = null;                       // the saved session being looked at, or 
 const ARCHQ = new URLSearchParams(location.search).get('arch');
 const ARCH_ID = () => WATCH ? ARCHQ : (ARCH && ARCH.id);
 if (WATCH) document.documentElement.classList.add('is-watch');
+if (MODE === 'projector') document.documentElement.classList.add('is-proj');
 const TOKEN_KEY = 'tds_token' + (qs.get('seat') ? '_' + qs.get('seat') : '');   // ?seat=2 lets you test several phones in one browser
 let CT = null;           // public task content
 let BUDGET = 57, FEAT = {};
@@ -501,12 +503,14 @@ async function refreshAdmin(){
   if (!ADMIN) return render();
   try {
     A.st = await api('/api/admin/state'); A.stAt = Date.now();
+    if (MODE === 'projector' && pjMode(A.st) === 'results' && Date.now() - PJ.chartsAt > 4000){ PJ.chartsAt = Date.now(); PJ.charts = await api('/api/admin/charts?consent_only=0'); }
     if (A.tab === 'results') A.results = await api('/api/admin/results?consent_only=' + (A.consentOnly ? 1 : 0));
     if (A.tab === 'charts') A.charts = await api('/api/admin/charts?consent_only=' + (A.consentOnly ? 1 : 0));
     if (A.tab === 'watch'){ A.wall = await api('/api/admin/wall'); A.wstats = A.watchPid ? await api('/api/admin/watch/' + encodeURIComponent(A.watchPid)) : null; }
     if (A.tab === 'feed'){ A.feed = await api('/api/admin/feed'); if (!A.fpause || !A.feedShown) A.feedShown = A.feed; }
     if (A.tab === 'saved') A.saved = await api('/api/admin/saved');
     if (A.tab === 'ai') A.ai = await api('/api/admin/ai');
+    if (A.tab === 'setup' && !A.models && !ARCH) A.models = await api('/api/admin/models');
     if (A.tab === 'people' && !A.person) A.people = await api('/api/admin/people');
     if (A.tab === 'people' && A.person) A.person = await api('/api/admin/person/' + A.person.pid);
     if (A.team) A.team = await api('/api/admin/team/' + A.team.id);
@@ -564,7 +568,6 @@ function archBanner(a){
 function savedTabHTML(o){
   const L = o.list;
   return `${o.arch ? '' : `<div class="card"><h3 style="margin-top:0">Save this session</h3>
-      <p class="small muted">Makes a folder with everything in this session as it is right now: charts, results, every player's screen and log, and all the data files. You can open it later and look around with the same tabs.</p>
       <div class="inline"><input type="text" id="savename" maxlength="60" value="${esc(o.defName)}" aria-label="Name for the saved session" style="flex:1;min-width:220px;margin:0">
         <button class="mini dark" data-act="savesess" ${o.canSave ? '' : 'disabled title="Nothing to save yet"'}><i class="ic ic-folder"></i>Save as a folder</button></div>
       ${o.canSave ? '' : '<p class="small muted" style="margin:8px 0 0">Nothing to save yet. Students need to join first.</p>'}</div>`}
@@ -621,7 +624,7 @@ const PP_GET = {id:p => p.pid, role:p => p.label || '~', team:p => p.team == nul
 function broadcastCard(o){
   const quick = ['Please stay in the app. No talking out loud.', 'Read every message before you send.', 'Tap Need help if something is not working.'];
   return `<div class="card bc-card"><div class="bc-head"><span class="bc-ic"><i class="ic ic-mega"></i></span>
-      <div class="bc-t"><h3>Message everyone${ti('broadcast')}</h3><p>Your message shows as a yellow banner at the top of every phone until you clear it. Time reminders go out on their own.</p></div>
+      <div class="bc-t"><h3>Message everyone${ti('broadcast')}</h3></div>
       <span class="bc-pause"><button class="mini" data-act="pause">${o.paused ? '<i class="ic ic-play"></i>Resume everyone' : '<i class="ic ic-pause"></i>Pause everyone'}</button>${ti('pause')}</span></div>
     <form data-form="bcast" class="bc-form"><input type="text" id="bcast" maxlength="160" placeholder="Type a message for every phone" aria-label="Message for every phone"><button type="submit" class="bc-send"><i class="ic ic-send"></i>Send</button></form>
     <div class="bc-quick"><small>Or send a ready-made one</small>${quick.map(m => `<button type="button" data-act="bc" data-msg="${esc(m)}">${esc(m)}</button>`).join('')}</div>
@@ -640,7 +643,7 @@ function broadcastCard(o){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', first); else first();
 })();
 
-/* ---------- v9 shared: the "AI backend" tab ---------- */
+/* ---------- v9 shared: the "AI status" tab ---------- */
 const AI_OPTS = [['new','Newest'],['slow','Slowest'],['waited','Longest wait'],['tokens','Most tokens']];
 const AI_GET = {new:x => x.i, slow:x => x.model_s, waited:x => x.wait_s, tokens:x => x.tok_in + x.tok_out};
 ['new','slow','waited','tokens'].forEach(k => SORT_DESC.add(k));
@@ -659,51 +662,98 @@ function aiAgg(L){
     series:Array.from({length:mins}, (_, m) => perMin[m] || 0), peakCalls:Math.max(0, ...Object.values(perMin)), peakTok:Math.max(0, ...Object.values(tokMin))};
 }
 /* D = {config, now, totals, log, session} */
+/* Reply times measured on ARC's shared service with gpt-oss-120b-thinking-low (design_deliberation_A-v2.1):
+   quick = results_brubaker_original (~7-8 s per call), busy = the later results/ runs (~2 min per call). */
+const AI_SPEED = {quick:8, busy:120};
+/* One color and icon per section, so the sections are easy to tell apart. */
+const AI_SEC = {test:['#255E4B','ic-pulse'], setup:['#2A2E3B','ic-sliders'], req:['#2B7F72','ic-send'], load:['#4C5BA8','ic-gauge'], plan:['#9A6400','ic-team3'], turns:['#5b6070','ic-list']};
+const aiHead = (k, title, right) => `<div class="ai-h"><span class="ai-hic"><i class="ic ${AI_SEC[k][1]}"></i></span><h3>${title}</h3>${right ? `<span class="ai-hr">${right}</span>` : ''}</div>`;
+const aiCard = (k, cls, inner) => `<div class="card ai-sec ${cls || ''}" style="--sc:${AI_SEC[k][0]}">${inner}</div>`;
+const aiTestCard = (T, busy) => aiCard('test', 'ai-test', `${aiHead('test', 'Before class: test the AI', `<button class="mini dark" data-act="aitest" ${busy ? 'disabled' : ''}><i class="ic ic-pulse"></i>${busy ? 'Testing…' : 'Test the AI'}</button>`)}
+    <p class="small muted" style="margin:0">Sends one short real request from this server. Run it on the lecture-day network.</p>
+  ${T ? `<div class="ai-verdict ${T.ok ? 'ok' : 'bad'}"><i class="ic ${T.ok ? 'ic-check' : 'ic-alert'}"></i><span>${T.standin ? esc(T.note || '')
+    : T.ok ? `<b>Working.</b> ${esc(T.model_returned || T.model)} answered in ${aiSec(T.seconds)}${T.finish_reason ? `, finish: ${esc(T.finish_reason)}` : ''}.`
+    : `<b>Not working.</b> ${esc(T.error || 'No answer.')}`}${T.at ? ` <small class="muted">Tested at ${new Date(T.at * 1000).toLocaleTimeString()}.</small>` : ''}</span></div>` : ''}`);
+/* Wait against the cutoff: the bar fills to the wait, the line marks the cutoff. */
+const aiWaitBar = (label, per, wait, cut, scale) => { const ok = wait <= cut;
+  return `<div class="ai-wb ${ok ? 'ok' : 'bad'}"><div class="ai-wb-l"><b>${label}</b><small>${aiSec(per)} per reply</small></div>
+    <div class="ai-wb-t"><i style="width:${Math.min(100, wait / scale * 100)}%"></i><u style="left:${cut / scale * 100}%" title="Cutoff: ${cut} s"></u></div>
+    <div class="ai-wb-v"><b>${aiSec(wait)}</b><small>${ok ? 'fits' : 'too long'}</small></div></div>`; };
 function aiTabHTML(D){
   if (!D) return '<p class="muted">Loading…</p>';
-  const U = UIS(), C = D.config, L = D.log || [], A = aiAgg(L), S = D.session;
-  const tile = (v, l, cls) => `<div class="stat ai-stat ${cls || ''}"><b>${v}</b><span>${l}</span></div>`;
-  const kv = (k, v, h) => `<div class="ai-kv"><span>${k}</span><b>${v}</b>${h ? `<small>${h}</small>` : ''}</div>`;
-  const fb = D.totals.fallbacks || 0;
+  const U = UIS(), C = D.config, L = D.log || [], A = aiAgg(L), S = D.session, R = D.requests || null, BF = D.totals.by_failure || {};
+  const tile = (v, l, ic, cls) => `<div class="stat ai-stat ${cls || ''}"><i class="ic ${ic}"></i><b>${v}</b><span>${l}</span></div>`;
+  const kv = (k, v, h, cls) => `<div class="ai-kv ${cls || ''}"><span>${k}</span><b>${v}</b>${h ? `<small>${h}</small>` : ''}</div>`;
+  const fb = D.totals.fallbacks || 0, modelCap = C.arc_model_cap || 10, keyCap = C.arc_key_cap || 20;
+  const counts = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${v}`).join(' · ') || '—';
+  const T = C.test || window.AI_TEST_LOCAL;
   // what a class would need
-  const N = Math.max(3, Math.min(600, parseInt(U.aiN, 10) || Math.max(S.joined, 90))), teams = Math.floor(N / 3), medTeams = Math.round(teams * S.mediated_share), calls = medTeams * S.rounds;
-  const per = A.n ? {i:A.tokIn / A.n, o:A.tokOut / A.n, s:A.med} : {i:1500, o:300, s:C.real ? 8 : 2};
-  const waves = Math.ceil(medTeams / C.concurrency), worst = waves * per.s, okWait = worst <= C.timeout_s;
+  const N = Math.max(3, Math.min(600, parseInt(U.aiN, 10) || Math.max(S.joined, 90))), teams = Math.floor(N / 3), medTeams = Math.round(teams * S.mediated_share), turns = medTeams * S.rounds;
+  const per = A.n ? {i:A.tokIn / A.n, o:A.tokOut / A.n} : {i:1500, o:300};
+  const waves = Math.max(1, Math.ceil(medTeams / C.concurrency));
+  const cases = [...(C.real && A.n ? [['This session', A.med]] : []), ['ARC quick', AI_SPEED.quick], ['ARC busy', AI_SPEED.busy]];
+  const scale = Math.max(C.timeout_s * 1.35, ...cases.map(([, s]) => waves * s));
+  const busyOk = waves * AI_SPEED.busy <= C.timeout_s;
   const maxBar = Math.max(1, ...A.series);
-  return `${C.real ? '' : `<div class="ai-note"><i class="ic ic-alert"></i><span><b>The stand-in Mediator is running, so no real AI is being called.</b> Times are the stand-in's short fake delay. Token and data numbers are estimates of what a real model would be sent and send back (about 4 letters per token). To use a real model, set MEDIATOR=llm on the server (see the README).</span></div>`}
-    <div class="stats ai-stats">${tile(D.now.flight, 'Running right now', D.now.flight ? 'live' : '')}${tile(D.now.waiting, 'Waiting in line', D.now.waiting ? 'warn' : '')}${tile(D.totals.calls, 'Calls so far')}
-      ${tile(fb, 'Stand-in had to answer', fb ? 'bad' : '')}${tile(aiSec(A.med), 'Typical reply time')}${tile(aiSec(A.max), 'Slowest reply')}</div>
+  // top status strip: what is answering, and is it healthy
+  const state = !C.real ? 'idle' : (T && !T.ok) || fb ? 'bad' : T && T.ok ? 'ok' : 'live';
+  const stateText = !C.real ? 'Stand-in (no AI)' : state === 'bad' ? 'Live model · needs attention' : state === 'ok' ? 'Live model · working' : 'Live model · not tested yet';
+  const health = R && R.n ? `<div class="ai-health" title="${R.answered} answered, ${R.errors} failed"><i style="flex:${R.answered}"></i>${R.errors ? `<i class="bad" style="flex:${R.errors}"></i>` : ''}</div>` : '';
+  return `<div class="ai-hero ${state}">
+      <span class="ai-light"></span>
+      <div class="ai-hero-t"><b>${stateText}</b><span>${C.real ? `${esc(C.model)}${C.arc ? ' on VT ARC · VT network or VPN only · ARC logs what it is sent' : ` · ${esc(C.endpoint)}`}` : 'Fixed rules inside the app. Nothing is sent anywhere. Pick a model on the Setup tab.'}</span></div>
+      <div class="ai-hero-c">${C.real && T ? `<span class="${T.ok ? '' : 'bad'}"><i class="ic ${T.ok ? 'ic-check' : 'ic-alert'}"></i>Last test ${T.ok ? aiSec(T.seconds) : 'failed'}</span>` : ''}
+        <span><i class="ic ic-list"></i>${D.totals.calls} turn${D.totals.calls === 1 ? '' : 's'}</span><span class="${fb ? 'bad' : ''}"><i class="ic ic-alert"></i>${fb} stand-in</span></div></div>
+    ${aiTestCard(T, window.AI_TEST_BUSY)}
+    <div class="stats ai-stats">${tile(D.now.flight, 'Running right now', 'ic-pulse', D.now.flight ? 'live' : '')}${tile(D.now.waiting, 'Waiting in line', 'ic-clock', D.now.waiting ? 'warn' : '')}${tile(D.totals.calls, 'Mediator turns so far', 'ic-chat')}
+      ${tile(fb, 'Stand-in had to answer', 'ic-alert', fb ? 'bad' : 'good')}${tile(aiSec(A.med), 'Typical reply time', 'ic-gauge')}${tile(aiSec(A.max), 'Slowest reply', 'ic-up')}</div>
     <div class="ai-grid">
-      <div class="card"><h3 style="margin-top:0">What the AI is set up as</h3><p class="small muted">These are set on the server before it starts. They cannot be changed from this page.</p>
-        ${kv('Mediator', esc(C.mediator))}${kv('Model', C.model ? esc(C.model) : 'none (rule-based stand-in)')}${kv('Where calls go', C.endpoint ? esc(C.endpoint) : 'nowhere, it runs inside the app')}
-        ${kv('Calls at the same time', `at most ${C.concurrency}`, 'More than this and teams wait in line.')}${kv('Give up after', `${C.timeout_s} seconds`, `Then ${esc(C.fallback)} answers instead, and the call is marked.`)}
-        ${C.reasoning ? kv('Reasoning effort', esc(C.reasoning)) : ''}${C.max_tokens ? kv('Longest reply allowed', `${C.max_tokens} tokens`) : ''}
-        ${kv('When it is called', `once per team per round, ${S.rounds} rounds`, 'Only for types with a Mediator. Unmediated teams never call it.')}</div>
-      <div class="card"><h3 style="margin-top:0">Load so far</h3><p class="small muted">How hard this session has pushed the AI.${A.est ? ' Token and data numbers are estimates.' : ''}</p>
-        ${kv('Busiest minute', `${A.peakCalls} call${A.peakCalls === 1 ? '' : 's'} · ${aiNum(A.peakTok)} tokens`, 'Compare this with the rate limit on your AI account.')}
+      ${aiCard('setup', '', `${aiHead('setup', 'What the AI is set up as')}
+        ${kv('Mediator', esc(C.mediator))}${kv('Model', C.model ? esc(C.model) : 'none (rule-based stand-in)', 'Change it on the Setup tab, before teams are formed.')}${kv('Where calls go', C.endpoint ? esc(C.endpoint) : 'nowhere, it runs inside the app', C.arc ? 'VT network or VT VPN only.' : '')}
+        ${kv('Turns at the same time', `at most ${C.concurrency}`, C.concurrency > modelCap ? `ARC allows only ${modelCap} per model per key. Lower AI_CONCURRENCY.` : `ARC allows ${modelCap} per model and ${keyCap} in flight per key. Use this key for nothing else during class.`, C.concurrency > modelCap ? 'bad' : '')}
+        ${kv('Give up after', `${C.timeout_s} seconds`, `For a whole turn, retries included. Then ${esc(C.fallback)} answers instead, and the turn is marked.`)}
+        ${C.reasoning ? kv('Reasoning effort', esc(C.reasoning)) : ''}${C.max_tokens ? kv('Longest reply allowed', `${C.max_tokens} tokens`, 'Reasoning counts toward this. Too low gives empty replies.') : ''}
+        ${C.request_timeout_s ? kv('One request waits up to', `${C.request_timeout_s} seconds`) : ''}${C.temperature != null ? kv('Temperature', `${C.temperature}`) : ''}
+        ${C.real ? kv('If a request fails', 'up to 4 tries', 'Busy: wait 1, 2, 4 s. ARC gateway timeout: wait 15, 30, 45 s. Missing model or bad key: stop.') : ''}
+        ${kv('When it is called', `once per team per round, ${S.rounds} rounds`, 'Only for types with a Mediator. Unmediated teams never call it.')}`)}
+      ${aiCard('req', '', `${aiHead('req', 'Requests to the model', R && R.n ? `${R.n} sent` : '')}
+        ${health}
+        ${R && R.n ? `${kv('Requests sent', `${R.n}`, `${R.answered} answered · ${R.errors} failed. One turn can take several requests.`)}
+          ${kv('Retries', `${R.retries}`, 'Busy, network or gateway errors that were tried again.')}
+          ${kv('Repairs', `${R.repairs}`, 'Re-asks after a missing or over-budget bundle.')}
+          ${kv('Empty replies', `${R.empty}`, R.empty ? 'Reasoning used up the token limit. If this keeps happening, raise MEDIATOR_MAX_TOKENS.' : 'None so far.', R.empty ? 'bad' : '')}
+          ${kv('How replies ended', counts(R.finish), '"length" means cut off at the token limit.', (R.finish || {}).length ? 'bad' : '')}
+          ${kv('Model that answered', counts(R.models), 'As reported by the server. Should stay the same all study.', Object.keys(R.models || {}).length > 1 ? 'bad' : '')}
+          ${R.errors ? kv('Errors by kind', counts(R.error_kinds), 'gateway: ARC gave up on its backend · busy: too many at once · vpn: not on the VT network · setup: bad key or missing model') : ''}`
+        : `<p class="small muted">${C.real ? 'No requests yet. They start when a team finishes a round.' : 'The stand-in answers inside the app, so nothing is sent.'}</p>`}
+        ${kv('Stand-in answered', `${fb} turn${fb === 1 ? '' : 's'}`, fb ? `${BF.timeout || 0} took too long · ${BF.network || 0} network or ARC problem · ${BF.model || 0} no valid bundle. Exclude these teams from the primary analysis.` : 'Every turn was answered by the Mediator.', fb ? 'bad' : '')}`)}
+      ${aiCard('load', '', `${aiHead('load', 'Load so far')}
+        ${kv('Busiest minute', `${A.peakCalls} turn${A.peakCalls === 1 ? '' : 's'} · ${aiNum(A.peakTok)} tokens`)}
         ${kv('Most running at once', `${D.totals.peak_flight || 0} of ${C.concurrency} allowed`)}${kv('Longest wait in line', aiSec(A.waitMax))}
         ${kv('Reply time', A.n ? `${aiSec(A.med)} typical · ${aiSec(A.p95)} for the slow 5%` : '—')}
-        ${kv('Tokens', `${aiNum(A.tokIn)} sent · ${aiNum(A.tokOut)} received`, A.n ? `About ${aiNum(A.tokIn / A.n)} in and ${aiNum(A.tokOut / A.n)} out per call.` : '')}
-        ${kv('Data', `${aiBytes(A.bOut)} sent · ${aiBytes(A.bIn)} received`, 'Text only, so the network load is tiny.')}
-        ${kv('Problems', `${A.timeouts} timed out · ${A.errors} errors`)}
-        ${A.series.length ? `<div class="ai-chart" role="img" aria-label="Calls in each minute of the session"><small>Calls in each minute of the session</small><div class="ai-bars">${A.series.map((v, i) => `<i style="height:${Math.max(4, v / maxBar * 100)}%" class="${v ? '' : 'z'}" title="Minute ${i + 1}: ${v} call${v === 1 ? '' : 's'}"></i>`).join('')}</div><div class="ai-ax"><span>min 1</span><span>min ${A.series.length}</span></div></div>` : ''}</div></div>
-    <div class="card ai-plan"><h3 style="margin-top:0">What a real class would need</h3>
-      <p class="small muted">Pick a class size. This uses the ${A.n ? 'numbers from this session' : 'default guesses, since no calls have happened yet'} and the worst case, where every team finishes a round at the same moment.</p>
+        ${kv('Tokens', `${aiNum(A.tokIn)} sent · ${aiNum(A.tokOut)} received`, A.n ? `About ${aiNum(A.tokIn / A.n)} in and ${aiNum(A.tokOut / A.n)} out per turn.${A.est ? ' Estimates.' : ''}` : '')}
+        ${kv('Data', `${aiBytes(A.bOut)} sent · ${aiBytes(A.bIn)} received`)}
+        ${A.series.length ? `<div class="ai-chart" role="img" aria-label="Turns in each minute of the session"><small>Turns in each minute of the session</small><div class="ai-bars">${A.series.map((v, i) => `<i style="height:${Math.max(4, v / maxBar * 100)}%;--d:${Math.min(i, 40) * 15}ms" class="${v ? '' : 'z'}" title="Minute ${i + 1}: ${v} turn${v === 1 ? '' : 's'}"></i>`).join('')}</div><div class="ai-ax"><span>min 1</span><span>min ${A.series.length}</span></div></div>` : ''}`)}</div>
+    ${aiCard('plan', 'ai-plan', `${aiHead('plan', 'What a real class would need')}
+      <p class="small muted" style="margin-top:0">Worst case: every team finishes a round at the same moment. Reply times on ARC's shared service ranged from about ${AI_SPEED.quick} s to about ${aiSec(AI_SPEED.busy)} in the simulation's runs.</p>
       <div class="inline" style="margin-bottom:10px"><span>Students in the class:</span><span class="numstep"><button type="button" data-act="ain" data-d="-15" aria-label="15 fewer">−</button><input class="pn-in ai-in" id="ain" type="text" inputmode="numeric" maxlength="3" value="${N}" aria-label="Students in the class"><button type="button" data-act="ain" data-d="15" aria-label="15 more">+</button></span></div>
-      <div class="ai-plan-g">${kv('Teams', `${teams}`, `${medTeams} of them use the Mediator.`)}${kv('AI calls in the session', `${calls}`, `${medTeams} teams × ${S.rounds} rounds.`)}
-        ${kv('Calls landing together', `up to ${medTeams}`, `Only ${C.concurrency} run at once, so they go in ${waves} wave${waves === 1 ? '' : 's'}.`)}
-        ${kv('Longest a team might wait', aiSec(worst), `${waves} wave${waves === 1 ? '' : 's'} × ${aiSec(per.s)} per reply.`)}
-        ${kv('Tokens for the session', `about ${aiNum(calls * (per.i + per.o))}`, `${aiNum(calls * per.i)} sent · ${aiNum(calls * per.o)} received.`)}
-        ${kv('Tokens in the busiest minute', `up to ${aiNum(medTeams * (per.i + per.o))}`, 'If every team closes a round within the same minute.')}</div>
-      <div class="ai-verdict ${okWait ? 'ok' : 'bad'}"><i class="ic ${okWait ? 'ic-check' : 'ic-alert'}"></i><span>${okWait ? `<b>This fits.</b> Even in the worst case, the last team waits about ${aiSec(worst)}, under the ${C.timeout_s}-second cutoff.` : `<b>This is too tight.</b> In the worst case the last team waits about ${aiSec(worst)}, past the ${C.timeout_s}-second cutoff, so the stand-in would answer for some teams. Ask for a higher limit on calls at the same time (AI_CONCURRENCY), a faster model, or a longer cutoff (AI_TIMEOUT).`}</span></div></div>
-    <div class="card"><h3 style="margin-top:0">Every call · ${L.length}</h3><p class="small muted">One row each time the Mediator was asked to write something. "Wait" is time in line. "Reply" is how long the AI took.</p>
+      <div class="ai-plan-g">${kv('Teams', `${teams}`, `${medTeams} of them use the Mediator.`)}${kv('Mediator turns in the session', `${turns}`, `${medTeams} teams × ${S.rounds} rounds. Repairs and retries add requests.`)}
+        ${kv('Turns landing together', `up to ${medTeams}`, `Only ${C.concurrency} run at once, so they go in ${waves} wave${waves === 1 ? '' : 's'}.`)}
+        ${kv('Tokens for the session', `about ${aiNum(turns * (per.i + per.o))}`, `${aiNum(turns * per.i)} sent · ${aiNum(turns * per.o)} received.`)}</div>
+      <div class="ai-waits"><div class="ai-waits-h"><span>How long the last team waits</span><span class="ai-cut"><u></u>${C.timeout_s} s cutoff</span></div>
+        ${cases.map(([l, s]) => aiWaitBar(l, s, waves * s, C.timeout_s, scale)).join('')}</div>
+      <div class="ai-verdict ${busyOk ? 'ok' : 'bad'}"><i class="ic ${busyOk ? 'ic-check' : 'ic-alert'}"></i><span>${busyOk ? `<b>This fits, even on a busy day.</b> The last team waits about ${aiSec(waves * AI_SPEED.busy)} in the worst case.`
+        : `<b>On a busy day, the shared service is too slow for this class.</b> Plan on a dedicated model (ARC Open OnDemand or vLLM), or test with "Test the AI" and a practice run at the class's day and hour. More turns at once (AI_CONCURRENCY, at most ${modelCap}) or a longer cutoff (AI_TIMEOUT) only help a little.`}</span></div>`)}
+    ${aiCard('turns', '', `${aiHead('turns', `Every turn · ${L.length}`)}
       ${L.length ? `${sortBar('ai', AI_OPTS)}<div class="ai-log">${sortRows('ai', L, AI_OPTS, AI_GET).slice(0, 80).map(x => `<div class="ai-row ${x.status}" style="--cc:${U.hideCond ? '#5b6070' : CONDC[x.cond]}">
         <span class="ai-t">#${x.i}</span><span class="ai-team"><i class="ic ic-team3"></i>Team ${x.team}</span><span class="pp-pill ${U.hideCond ? '' : 'c'}">${U.hideCond ? 'type hidden' : esc(typeof condLabel === 'function' ? condLabel(x.cond) : condLbl(x.cond))}</span>
         <span class="ai-kind">${esc(x.kind)} · round ${x.round}</span>
-        <span class="pp-pill ${x.status === 'ok' ? 'ok' : 'no'}"><i class="ic ${x.status === 'ok' ? 'ic-check' : 'ic-alert'}"></i>${x.status === 'ok' ? 'OK' : x.status === 'timeout' ? 'Timed out, stand-in answered' : 'Error, stand-in answered'}</span>
-        <span class="ai-n" title="Time waiting in line"><i class="ic ic-clock"></i>${aiSec(x.wait_s)} wait</span><span class="ai-n" title="How long the AI took"><i class="ic ic-pulse"></i>${aiSec(x.model_s)} reply</span>
+        <span class="pp-pill ${x.status === 'ok' ? 'ok' : 'no'}"><i class="ic ${x.status === 'ok' ? 'ic-check' : 'ic-alert'}"></i>${x.status === 'ok' ? 'OK' : x.status === 'timeout' ? 'Took too long, stand-in answered' : x.status === 'network' ? 'Network or ARC problem, stand-in answered' : x.status === 'model' ? 'No valid bundle, stand-in answered' : 'Error, stand-in answered'}</span>
+        <span class="ai-n" title="Time waiting in line"><i class="ic ic-clock"></i>${aiSec(x.wait_s)} wait</span><span class="ai-n" title="How long the turn took, retries and repairs included"><i class="ic ic-pulse"></i>${aiSec(x.model_s)} reply</span>
         <span class="ai-n" title="Tokens sent and received${x.est ? ' (estimate)' : ''}"><i class="ic ic-chat"></i>${aiNum(x.tok_in)} in · ${aiNum(x.tok_out)} out${x.est ? ' <em>est.</em>' : ''}</span>
-        ${x.error ? `<span class="ai-err">${esc(x.error)}</span>` : ''}</div>`).join('')}</div>${L.length > 80 ? `<p class="small muted">Showing 80 of ${L.length}.</p>` : ''}` : '<p class="muted">No calls yet. The Mediator is called when a team finishes a round.</p>'}</div>`;
+        ${x.requests > 1 || x.repairs || x.retries ? `<span class="ai-n" title="Requests this turn took"><i class="ic ic-list"></i>${x.requests} requests${x.repairs ? ` · ${x.repairs} repair${x.repairs === 1 ? '' : 's'}` : ''}${x.retries ? ` · ${x.retries} retr${x.retries === 1 ? 'y' : 'ies'}` : ''}</span>` : ''}
+        ${x.empty ? `<span class="ai-n bad-t" title="Replies with no text"><i class="ic ic-alert"></i>${x.empty} empty</span>` : ''}${x.finish === 'length' ? '<span class="ai-n bad-t">cut off at token limit</span>' : ''}
+        ${x.error ? `<span class="ai-err">${esc(x.error)}</span>` : ''}</div>`).join('')}</div>${L.length > 80 ? `<p class="small muted">Showing 80 of ${L.length}.</p>` : ''}` : '<p class="muted">No turns yet. The Mediator is called when a team finishes a round.</p>'}`)}`;
 }
 
 const PN = () => Math.max(1, Math.min(150, parseInt(UIS().practiceN, 10) || 12));
@@ -719,10 +769,10 @@ document.addEventListener('focusout', e => { const t = e.target; if (t.classList
 function simPanelHTML(o){
   const done = o.teams > 0 && o.finished >= o.teams, run = o.on && !done;
   const lo = Math.max(1, Math.round(o.total / (o.speed || 1))), hi = Math.max(lo + 1, Math.round(o.total * 2.3 / (o.speed || 1)));
-  const status = done ? `<span class="simlive done"><i></i>Finished</span> · all ${o.teams} teams are done, so the clock stopped. Look at the Charts tab, or start fresh to run it again.`
+  const status = done ? `<span class="simlive done"><i></i>Finished</span> · all ${o.teams} teams are done.`
     : run && o.paused ? `<span class="simlive pau"><i></i>Paused</span> · nobody can move on, real or simulated, until you press Resume.`
-    : run ? `<span class="simlive"><i></i>Running at ${o.speed}×</span> · ${o.finished} of ${o.teams} teams finished. A whole session usually takes ${lo} to ${hi} min at this speed.`
-    : 'Pick how many simulated students you want, add them, then press Run. Teams form by themselves and every simulated student plays like a real one: some engaged, some low effort, some slow, some misread their results.';
+    : run ? `<span class="simlive"><i></i>Running at ${o.speed}×</span> · ${o.finished} of ${o.teams} teams finished. About ${lo} to ${hi} min at this speed.`
+    : 'Add simulated students, then press Run.';
   const seg = `<span class="seg">${[[1,'1× real class'],[5,'5×'],[15,'15×'],[40,'40×']].map(([v, l]) => `<button data-act="simspeed" data-v="${v}" class="${(run ? o.speed : o.sp) === v ? 'on' : ''}">${l}</button>`).join('')}</span>`;
   const btns = done ? `<button class="simgo alt" data-act="admtab" data-tab="charts">See the charts</button><button class="simgo" data-act="startfresh">Start fresh</button>`
     : run ? `${seg}<button class="simgo alt" data-act="pause">${o.paused ? '<i class="ic ic-play"></i>Resume' : '<i class="ic ic-pause"></i>Pause'}</button><button class="simgo stop" data-act="autorun" data-v="0"><i class="ic ic-stop"></i>Stop</button>`
@@ -753,14 +803,14 @@ function wStats(){
     <div class="seg ws-seg">${[['now','Overview'],['said',`Messages${x.messages ? ' · ' + x.messages.length : ''}`],['log','Activity']].map(([k, l]) => `<button type="button" data-act="wpane" data-v="${k}" class="${pane === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   let h = '';
   if (pane === 'now'){
-    if (x.findings) h += box('Secret findings', 'Only this player has these. Each one should travel left to right: said it, teammates saw it, team used it, it is in the final design.',
+    if (x.findings) h += box('Secret findings', 'Only this player has these.',
       x.findings.map(f => `<div class="ws-f"><div class="ws-ft"><span><b>${f.f}</b> ${esc(f.name)}</span><span class="ws-dir ${f.dir > 0 ? 'up' : 'dn'}">really ${dirWord(f.dir)}</span></div>
         <ol class="ws-track"><li class="${f.spoken ? 'on' : ''}">Said</li><li class="${f.heard ? 'on' : ''}">Seen</li><li class="${f.integrated ? 'on' : ''}">Used</li><li class="${f.actioned ? 'on' : ''}">In final</li></ol>
         ${!f.spoken && f.mentioned ? '<div class="ws-note">Named it, but did not say if it is worth more or less.</div>' : ''}</div>`).join(''));
     if (x.picks) h += box('Picks right now', '', `<div class="ws-chips">${x.picks.length ? x.picks.map(f => `<span class="fd-chip">${f}</span>`).join('') : '<span class="muted">No picks yet</span>'}</div>
       ${meter('Budget used', `$${x.cost} of $${x.budget}`, x.cost / x.budget * 100)}${meter('Real value of these picks', `${x.picks_value} of ${x.opt} · ${Math.round(x.picks_value / x.opt * 100)}%`, x.picks_value / x.opt * 100)}
       ${x.draft ? `<p class="ws-hint" style="margin:10px 0 4px">Typing now (not sent yet):</p><div class="fd-draft">${esc(x.draft)}</div>` : ''}`);
-    h += box('Behavior', 'Counts for this player so far.', `<div class="ws-tiles">${tile(c.pick, 'Pick changes')}${tile(c.tab, 'Tab switches')}${tile(c.left_app, 'Left the app')}${tile(c.paste_blocked, 'Paste tries')}${tile(c.copy_blocked, 'Copy tries')}${tile(c.time_warning, 'Time reminders')}${tile(c.help, 'Help requests')}</div>`);
+    h += box('Behavior', '', `<div class="ws-tiles">${tile(c.pick, 'Pick changes')}${tile(c.tab, 'Tab switches')}${tile(c.left_app, 'Left the app')}${tile(c.paste_blocked, 'Paste tries')}${tile(c.copy_blocked, 'Copy tries')}${tile(c.time_warning, 'Time reminders')}${tile(c.help, 'Help requests')}</div>`);
   }
   if (pane === 'said'){
     h += box('Messages sent', x.messages && x.messages.length ? `${x.messages.length} message${x.messages.length === 1 ? '' : 's'} · ${x.words} words` : '',
@@ -835,26 +885,13 @@ function wStats(){
    and helpful empty screens. Shared by the server app and the prototype.
    ===================================================================== */
 const TAB_GROUPS = [
-  ['Run the session', [['live','Live session'], ['watch','Watch players'], ['ai','AI backend'], ['projector','Projector']]],
+  ['Run the session', [['live','Live session'], ['watch','Watch players'], ['ai','AI status']]],
   ['See results', [['charts','Charts'], ['results','Results & data'], ['people','People'], ['saved','Saved sessions']]],
   ['Before class', [['setup','Setup']]],
 ];
-const TAB_HELP = {
-  live:'Start here. The run sheet walks you through a class session step by step.',
-  watch:'See any player\'s screen live, with extra admin-only info. Good for spotting confusion early.',
-  feed:'Every message, vote and survey answer, the moment someone sends it.',
-  projector:'The join screen for the lecture hall: class code and QR code. Then it shows team progress.',
-  charts:'Live charts for the research questions. Use "Build a report" to download them.',
-  results:'Each team\'s final design and score, plus every data download (CSV, database).',
-  people:'Every participant as a profile. Click one for their full activity log, step by step.',
-  ai:'What the Mediator AI is doing behind the scenes: calls, speed, load, and what a full class would need.',
-  saved:'Save a session as a folder, then open it later and look around with the same tabs.',
-  setup:'Class code, deliberation types, step timers, rounds and the Mediator. Check this before class.',
-};
 function tabsHTML(cur){
   return `<nav class="tabs2" aria-label="Admin sections">${TAB_GROUPS.map(([g, ts]) => `<div class="tg"><span class="tg-l">${g}</span><div class="tg-b">${ts.map(([k, l]) =>
-    `<button data-act="admtab" data-tab="${k}" class="${cur === k ? 'on' : ''}" aria-current="${cur === k ? 'page' : 'false'}">${l}</button>`).join('')}</div></div>`).join('')}</nav>
-    <p class="tab-help">${TAB_HELP[cur] || ''}</p>`;
+    `<button data-act="admtab" data-tab="${k}" class="${cur === k ? 'on' : ''}" aria-current="${cur === k ? 'page' : 'false'}">${l}</button>`).join('')}</div></div>`).join('')}</nav>`;
 }
 /* G = {lobbyOpen, joined, answered, teams, finished, bots, real, hideCond, help, paused, auto, mediator, rounds, totalMin, code, setupSeen, collapsed} */
 function runSheet(G){
@@ -864,23 +901,79 @@ function runSheet(G){
       a:`<button class="mini" data-act="admtab" data-tab="setup">Open Setup</button>${!G.hideCond ? '<button class="mini" data-act="hidecond">Hide types for class</button>' : ''}`},
     {t:'Show the join screen', done:S2, d:`Put the projector view on the big screen. Students scan the QR code or go to this site and type <b>${esc(G.code)}</b>. No names or accounts.`,
       a:G.projectorBtn},
-    {t:'Wait for students to join', done:S4, d:G.lobbyOpen ? `<b>${G.joined}</b> joined · <b>${G.answered}</b> answered the consent question. Teams are groups of 3, so a few leftovers are normal. Just testing? Add simulated students in the Full simulation box below.` : `${G.joined} joined.`,
+    {t:'Wait for students to join', done:S4, d:G.lobbyOpen ? `<b>${G.joined}</b> joined · <b>${G.answered}</b> answered the consent question.` : `${G.joined} joined.`,
       a:G.lobbyOpen ? '' : ''},
     {t:'Form the teams', done:S4, d:G.lobbyOpen ? 'This closes the lobby and puts everyone into teams of 3 with a deliberation type. Late arrivals can still be added after.' : `${G.teams} teams formed.`,
       a:G.lobbyOpen ? `<button class="mini dark" data-act="formsure" ${G.answered ? '' : 'disabled title="Wait until someone answers consent"'}>Form teams</button>` : ''},
-    {t:'Keep an eye on things', done:S5, d:S4 ? `<b>${G.finished} of ${G.teams}</b> teams finished${G.help ? ` · <b class="bad-t">${G.help} asking for help</b>` : ''}${G.paused ? ' · <b>paused</b>' : ''}. Players get time reminders on their own.` : 'Once teams are formed, watch their screens here.',
+    {t:'Keep an eye on things', done:S5, d:S4 ? `<b>${G.finished} of ${G.teams}</b> teams finished${G.help ? ` · <b class="bad-t">${G.help} asking for help</b>` : ''}${G.paused ? ' · <b>paused</b>' : ''}.` : 'Once teams are formed, watch their screens here.',
       a:S4 ? `<button class="mini" data-act="admtab" data-tab="watch">Watch players</button><button class="mini" data-act="pause">${G.paused ? 'Resume everyone' : 'Pause everyone'}</button>` : ''},
-    {t:'Wrap up and save the results', done:false, d:'Download the data and build a report with the charts and how each one was made.',
+    {t:'Wrap up and save the results', done:false, d:'',
       a:G.teams ? `<button class="mini dark" data-act="gotoreport">Build a report</button><button class="mini" data-act="admtab" data-tab="results">Download data</button><button class="mini" data-act="admtab" data-tab="saved">Save this session</button>` : ''},
   ];
   const now = steps.findIndex(s => !s.done);
   return `<div class="card runsheet ${G.collapsed ? 'col' : ''}"><div class="rs-h"><h3 style="margin:0">Run sheet</h3><span class="small muted">${now < 0 ? 'All done' : `Step ${now + 1} of ${steps.length}`}</span>
       <button class="xp-link" data-act="rstoggle">${G.collapsed ? 'Show' : 'Hide'}</button></div>
-    ${G.collapsed ? '' : `<ol class="rs">${steps.map((s, i) => `<li class="${s.done ? 'done' : i === now ? 'now' : ''}"><span class="rs-n">${s.done ? '✓' : i + 1}</span><div class="rs-b"><b>${s.t}</b>${i === now || !s.done ? `<p>${s.d}</p>${s.a ? `<div class="rs-a">${s.a}</div>` : ''}` : ''}</div></li>`).join('')}</ol>`}</div>`;
+    ${G.collapsed ? '' : `<ol class="rs">${steps.map((s, i) => `<li class="${s.done ? 'done' : i === now ? 'now' : ''}"><span class="rs-n">${s.done ? '✓' : i + 1}</span><div class="rs-b"><b>${s.t}</b>${i === now || !s.done ? `${s.d ? `<p>${s.d}</p>` : ''}${s.a ? `<div class="rs-a">${s.a}</div>` : ''}` : ''}</div></li>`).join('')}</ol>`}</div>`;
 }
+const projBar = code => `<div class="projbar"><span class="pj-ic"><i class="ic ic-screen"></i></span><div class="pj-t"><b>Projector screen</b><small>QR code and class code <b>${esc(code)}</b>, then team progress.</small></div><a class="pj-go" href="/projector" target="_blank" rel="noopener"><i class="ic ic-screen"></i>Open projector view</a></div>`;
+/* ---------- Section look for every admin tab (same style as the AI status tab) ----------
+   Each kind of card keeps one color and one line icon everywhere, picked by its title.
+   Runs after each admin render. Only touches cards at the top level of the page, so the
+   student screens mirrored inside Watch players are left exactly as students see them. */
+const SEC_COLORS = {green:'#255E4B', slate:'#2A2E3B', teal:'#2B7F72', indigo:'#4C5BA8', amber:'#9A6400', rose:'#B4475A', gray:'#5b6070'};
+const SEC_MAP = [   // title starts with -> [color, icon]
+  ['Run sheet','green','ic-flag'], ['Full simulation','indigo','ic-play'], ['Lobby is open','teal','ic-user'], ['Message everyone','amber',null],
+  ['Needs attention','rose','ic-bell'], ['Teams','slate','ic-team3'], ['Team timelines','slate','ic-team3'],
+  ['Watch players','teal','ic-eye'], ['Live feed','teal','ic-chat'], ['Typing now','teal','ic-chat'],
+  ['Which teams count','slate','ic-check'], ['The four steps','green','ic-flag'], ['Points lost','rose','ic-down'], ['Design outcome','indigo','ic-gauge'],
+  ['Downloads','teal','ic-download'], ['Copy the data','teal','ic-download'], ['Build a report','indigo','ic-download'], ['Each team','slate','ic-team3'],
+  ['People','teal','ic-user'], ['Everything they did','slate','ic-list'], ['Time on each step','amber','ic-clock'],
+  ['Save this session','green','ic-folder'], ['Saved sessions','indigo','ic-folder'],
+  ['Session','slate','ic-sliders'], ['Deliberation types','slate','ic-team3'], ['Headcount','amber','ic-user'], ['Step timers','amber','ic-clock'], ['Mediator','green','ic-chat'], ['New session','rose','ic-play'], ['Start over','rose','ic-stop'],
+  ['Findings','green','ic-flag'], ['Everything saved','slate','ic-list'],
+];
+const SEC_STATS = [['Joined','ic-user'], ['Teams finished','ic-check'], ['Teams waiting','ic-clock'], ['AI calls','ic-chat']];
+function decorateSections(root){
+  if (!root) return;
+  root.querySelectorAll(':scope > .card').forEach(card => {
+    if (card.dataset.sec || /\b(ai-sec|empty|proj)\b/.test(card.className)) return;
+    const h = card.querySelector('h3');
+    if (!h) return;
+    const title = (h.firstChild ? h.firstChild.textContent : h.textContent).trim();
+    const m = SEC_MAP.find(([p]) => title.startsWith(p)), icon = m ? m[2] : 'ic-list';
+    card.dataset.sec = '1';
+    card.classList.add('sec');
+    card.style.setProperty('--sc', SEC_COLORS[m ? m[1] : 'gray']);
+    let d = 0; for (let e = h.parentElement; e && e !== card; e = e.parentElement) d++;
+    const top = d <= 2;                                   // a heading near the top of the card
+    if (!icon || !top || card.querySelector('.bc-ic')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'sec-h';
+    wrap.innerHTML = `<span class="sec-ic"><i class="ic ${icon}"></i></span>`;
+    h.parentElement.insertBefore(wrap, h);
+    wrap.appendChild(h);
+  });
+  root.querySelectorAll(':scope > .stats > .stat:not(.ai-stat)').forEach(s => {
+    const t = ((s.querySelector('span') || {}).textContent || '').trim(), m = SEC_STATS.find(([p]) => t.startsWith(p));
+    if (m && !s.querySelector(':scope > .ic')){ s.classList.add('sec-stat'); s.insertAdjacentHTML('afterbegin', `<i class="ic ${m[1]}"></i>`); }
+  });
+}
+/* Status strips for the two tabs with a real state to show. Same look as the AI status strip. */
+const liveHero = G => {
+  const state = G.help || G.stuck ? 'bad' : G.paused ? 'live' : G.running ? 'ok' : 'idle';
+  const title = G.paused ? 'Paused' : G.running ? (G.auto ? `Running · simulation at ${G.auto}×` : 'Running')
+    : G.lobbyOpen ? 'Lobby open · waiting for students' : G.teams && G.finished >= G.teams ? 'All teams finished' : 'Stopped';
+  return `<div class="ai-hero sec-hero ${state}"><span class="ai-light"></span>
+    <div class="ai-hero-t"><b>${title}</b><span>Class code ${esc(G.code)} · ${esc(G.mediator)}</span></div>
+    <div class="ai-hero-c"><span class="${G.help ? 'bad' : ''}"><i class="ic ic-bell"></i>${G.help} asking for help</span>${G.stuck ? `<span class="bad"><i class="ic ic-clock"></i>${G.stuck} waiting over 2 min</span>` : ''}
+      <span><i class="ic ic-eye"></i>Types ${G.hideCond ? 'hidden' : 'showing'}</span></div></div>`;
+};
+const setupHero = G => `<div class="ai-hero sec-hero ${G.locked ? 'live' : 'ok'}"><span class="ai-light"></span>
+    <div class="ai-hero-t"><b>${G.locked ? 'Locked for this session' : 'Ready to edit'}</b><span>${G.locked ? 'Teams have been formed. Step timers can still change.' : 'Check everything here before forming teams.'}</span></div>
+    <div class="ai-hero-c"><span><i class="ic ic-user"></i>Code ${esc(G.code)}</span><span><i class="ic ic-list"></i>${G.rounds} rounds</span><span><i class="ic ic-chat"></i>${esc(G.mediator)}</span></div></div>`;
 function practiceBadge(G){
   if (!G.bots) return '';
-  return `<div class="practice"><span><b>Practice data:</b> this session has ${G.bots} simulated student${G.bots === 1 ? '' : 's'}${G.real ? ` and ${G.real} real` : ''}. Before a real class, start a fresh session so practice data never mixes with real data.</span>
+  return `<div class="practice"><span><b>Practice data:</b> this session has ${G.bots} simulated student${G.bots === 1 ? '' : 's'}${G.real ? ` and ${G.real} real` : ''}. Start fresh before a real class.</span>
     <button class="mini" data-act="startfresh">Start fresh</button></div>`;
 }
 function guideModal(){
@@ -918,14 +1011,13 @@ function renderAdmin(){
   if (A.tab === 'feed') h += adminFeed();
   if (A.tab === 'watch') h += adminWatch();
   if (A.tab === 'people') h += A.person ? personView() : peopleList();
-  if (A.tab === 'projector') h += `<div class="card"><p>${ti('projector')} Put this on the lecture hall screen. It shows the join code and QR code, then switches to team progress once teams are formed.</p><a class="mini dark" href="/projector" target="_blank">Open projector view in a new tab</a></div>` + projectorBody(st);
-  if (A.tab === 'setup') h += adminSetup(st);
+  if (A.tab === 'setup') h += setupHero({locked:!st.lobby_open, code:st.settings.class_code, rounds:st.settings.rounds, mediator:st.mediator}) + adminSetup(st);
   if (A.tab === 'results') h += adminResults();
   if (A.tab === 'ai') h += aiTabHTML(A.ai);
-  if (A.tab === 'saved') h += savedTabHTML({list:A.saved, arch:ARCH, defName:st.session, canSave:st.joined > 0, note:'Each saved session is a folder on the server, in <b>data/saved</b>. Download one as a .zip to keep a copy somewhere else.',
+  if (A.tab === 'saved') h += savedTabHTML({list:A.saved, arch:ARCH, defName:st.session, canSave:st.joined > 0, note:'Stored on the server in <b>data/saved</b>.',
     zip:m => `<a class="mini" href="/api/admin/saved/${m.id}/zip?admin=${encodeURIComponent(ADMIN)}"><i class="ic ic-download"></i>Download folder (.zip)</a>`});
   if (A.showGuide) h += guideModal();
-  if (A.tab === 'charts' && !st.finished) h += emptyState('No results yet', 'Charts fill in as soon as the first team finishes. Want to see what they look like? Start a practice run: it plays a whole session with simulated students in a few minutes.', st.teams.length ? '<button class="mini" data-act="admtab" data-tab="live">Back to the session</button>' : '<button class="mini dark" data-act="practice">Start a practice run</button>');
+  if (A.tab === 'charts' && !st.finished) h += emptyState('No results yet', 'Charts fill in when the first team finishes.', st.teams.length ? '<button class="mini" data-act="admtab" data-tab="live">Back to the session</button>' : '<button class="mini dark" data-act="practice">Start a practice run</button>');
   else if (A.tab === 'charts') h += `<div class="inline" style="justify-content:space-between;margin-bottom:6px"><span class="small muted">${ti('ch_tab')} Charts count finished, non-spare teams.</span><label class="chip"><input type="checkbox" id="consentonly" ${A.consentOnly ? 'checked' : ''}> Consenting teams only</label></div>` + (A.charts ? window.renderCharts(A.charts, ti) : '<p class="muted">Loading…</p>');
   return h;
 }
@@ -933,7 +1025,7 @@ function simPanel(on, speed, canStart, total){
   const sp = A.simSpeed || 15;
   return `<div class="card simcard ${on ? 'on' : ''}"><div class="simrow"><div><h3 style="margin:0">Full simulation${ti('fullsim')}</h3>
       <p class="small muted" style="margin:4px 0 0">${on ? `<span class="simlive"><i></i>Running at ${speed}×</span> · a full session takes about ${Math.max(1, Math.round(total / speed * 10) / 10)} min at this speed. Watch the Charts tab fill up.`
-        : 'Add simulated students, then press Run. Teams form by themselves and every simulated student plays like a real one: some engaged, some low effort, some slow, some misread their results.'}</p></div>
+        : 'Add simulated students, then press Run.'}</p></div>
     <div class="inline"><span class="seg">${[[1,'1× real class'],[5,'5×'],[15,'15×'],[40,'40×']].map(([v, l]) => `<button data-act="simspeed" data-v="${v}" class="${(on ? speed : sp) === v ? 'on' : ''}">${l}</button>`).join('')}</span>
       ${on ? '<button class="simgo stop" data-act="autorun" data-v="0"><i class="ic ic-stop"></i>Stop</button>' : `<button class="simgo" data-act="autorun" data-v="${sp}" ${canStart ? '' : 'disabled title="Add simulated students first"'}><i class="ic ic-play"></i>Run</button>`}</div></div></div>`;
 }
@@ -942,16 +1034,16 @@ function adminLive(st){
   const totalMin = tmr.card + tmr.round1 + tmr.round * (nR - 1) + nR + tmr.final + tmr.survey;
   const G = {lobbyOpen:st.lobby_open, joined:st.joined, answered:st.answered, teams:st.teams.length, finished:st.finished, bots:st.bots, real:st.joined - st.bots,
     hideCond:A.hideCond, help:(st.helps || []).length, paused:st.paused, auto:st.auto_speed, mediator:st.mediator, rounds:nR, totalMin, code:st.settings.class_code,
-    setupSeen:SETUP_SEEN(), collapsed:RS_COL(), projectorBtn:'<a class="mini dark" href="/projector" target="_blank" rel="noopener">Open projector view</a><button class="mini" data-act="admtab" data-tab="projector">Preview it here</button>'};
-  let h = (ARCH ? '' : practiceBadge(G) + runSheet(G) + simPanelHTML({on:!!st.auto_speed, speed:st.auto_speed, sp:A.simSpeed || 15, canStart:st.joined > 0 || st.teams.length > 0, total:totalMin, paused:st.paused, teams:st.teams.length, finished:st.finished})) + `<div class="stats">
+    setupSeen:SETUP_SEEN(), collapsed:RS_COL(), projectorBtn:'<a class="mini dark" href="/projector" target="_blank" rel="noopener">Open projector view</a>'};
+  let h = (ARCH ? '' : liveHero({...G, running:!!st.clock_rate, stuck:st.stuck}) + projBar(G.code) + practiceBadge(G) + runSheet(G) + simPanelHTML({on:!!st.auto_speed, speed:st.auto_speed, sp:A.simSpeed || 15, canStart:st.joined > 0 || st.teams.length > 0, total:totalMin, paused:st.paused, teams:st.teams.length, finished:st.finished})) + `<div class="stats">
     <div class="stat"><b>${st.joined}</b><span>Joined (${st.yes} yes · ${st.no} no)${ti('joined')}</span></div>
     <div class="stat"><b>${st.finished} / ${st.teams.length}</b><span>Teams finished${ti('finished')}</span></div>
     <div class="stat"><b style="color:${st.stuck ? 'var(--warn)' : 'inherit'}">${st.stuck}</b><span>Teams waiting over 2 min${ti('stuck')}</span></div>
     <div class="stat"><b>${st.stats.calls}</b><span>AI calls · ${st.stats.avg_s == null ? '—' : st.stats.avg_s + 's avg'} · ${st.stats.queue} in queue · ${st.stats.timeouts} timeouts · ${st.stats.fallbacks} fallbacks${ti('ai')}</span></div></div>`;
   if (st.lobby_open){
     h += `<div class="card"><h3 style="margin-top:0">Lobby is open${ti('lobby')}</h3>
-      ${A.hideCond ? '' : `<div class="types-note"><span><b>Deliberation types are showing.</b> Fine for testing. Before a real class, hide them so you treat every team the same.</span><button class="mini" data-act="hidecond">Hide types</button></div>`}
-      <p class="small muted">Students go to this site, type <b>${esc(st.settings.class_code)}</b>, answer consent and wait. ${st.answered} of ${st.joined} have answered consent. When you form teams, consenting and non-consenting students go in separate teams, and 1–2 leftovers become a spare team that is left out of analysis.</p>
+      ${A.hideCond ? '' : `<div class="types-note"><span><b>Deliberation types are showing.</b> Hide them before a real class.</span><button class="mini" data-act="hidecond">Hide types</button></div>`}
+      <p class="small muted">${st.answered} of ${st.joined} answered consent.</p>
       <div class="inline">
       ${st.last_batch ? `<button class="mini" data-act="undobots">Undo last add (${st.last_batch})</button>${ti('undo_bots')}` : ''}
       ${st.bots ? `<button class="mini" data-act="clearbots">Remove all simulated (${st.bots})</button>${ti('clear_bots')}` : ''}
@@ -968,15 +1060,107 @@ function adminLive(st){
       members:['ME','MF','HF'].filter(r => t.members[r] && t.members[r].pid).map(r => { const m = t.members[r]; return {role:r, roleName:CT.roles[r] ? CT.roles[r].short : r, name:m.pseudo, pid:m.pid, status:m.status, help:m.help, real:!m.bot}; }),
       actions:`<button class="mini tb" data-act="admteam" data-team="${t.id}" title="Everything this team wrote and did"><i class="ic ic-list"></i>Log</button>${t.phase[0] !== 'Finished' && !t.pending ? `<button class="mini tb warn" data-act="close" data-team="${t.id}" title="Moves the team on without missing messages. Logged."><i class="ic ic-skip"></i>Close round</button>` : ''}`})), LIVE_OPTS, LIVE_GET).map(t => teamRow(t, A.hideCond)).join('');
     const TL = window.renderTimelines(st.teams.map(t => ({id:t.id, label:condLabel(t.cond), mediated:t.cond !== 'unmediated', steps:t.steps, pending:t.pending, elapsed:t.elapsed + (Date.now() - A.stAt) / 1000 * (t.done ? 0 : (st.clock_rate || 0)), spare:t.spare, nonconsent:t.nonconsent, done:t.done})), st.settings.rounds, {ti, hideCond:A.hideCond, timers:st.settings.timers, parts:true});
-    h += `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Teams${ti('teams')}</h3>
+    h += `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Teams${ti('timelines')}</h3>
       <span><button class="mini" data-act="hidecond">${A.hideCond ? 'Show types' : 'Hide types'}</button>${ti('hide_types')}<button class="mini" data-act="sim">Simulate one step</button>${ti('sim')}</span></div>
-      <p class="small muted">One row per team: who is on it, what each person is doing, and how far along the team is against the ${TL.total}-minute schedule. Click a person to open their log. "Close round" moves a team on without the missing messages and is flagged in the data.${ti('timelines')}</p>
       <div class="tr-top">${sortBar('live', LIVE_OPTS)}${TL.legend}</div>
       <div class="tr-tlhead">${TL.head}<div class="tl-side">Time · pace</div><div></div></div>
       <div class="tr-list tight">${rowsOf(TL)}</div></div>`;
   }
   return h;
 }
+/* ---------- projector: one big screen for the room. Join -> Progress -> Results ---------- */
+const PJ_TIPS = [
+  'Take your time. Careful work matters more than speed.',
+  'Stay in the app. Only what you write in the app counts.',
+  'Read every message before you send yours.',
+  'Stuck? Tap Need help and a researcher will come to you.',
+  'Please finish every step, including the short survey at the end.',
+  'Done early? Thank you. Please wait quietly for the other teams.',
+];
+const PJ = {mode:(() => { try { return localStorage.getItem('tds_pj_mode') || 'auto'; } catch(_){ return 'auto'; } })(), types:false, lastFin:null, toast:'', toastAt:0, charts:null, chartsAt:0};
+const PJ_NAMES = {join:'Join', work:'Progress', results:'Results'};
+function pjStepIdx(s, R){ if (!s || s === 'card') return 0; if (s.startsWith('post')) return 2 * roundOf(s) - 1; if (s.startsWith('wait')) return 2 * roundOf(s); return ({final:2 * R + 1, survey:2 * R + 2, done:2 * R + 3})[s] ?? 0; }
+const pjAuto = st => st.lobby_open ? 'join' : st.teams.length && st.finished >= st.teams.length ? 'results' : 'work';
+const pjMode = st => PJ.mode === 'auto' ? pjAuto(st) : PJ.mode;
+const pjPct = x => `${Math.round((x || 0) * 100)}%`;
+function pjControls(st){
+  const m = pjMode(st), b = (k, l) => `<button data-act="pjmode" data-v="${k}" class="${PJ.mode === k ? 'on' : ''}">${l}</button>`;
+  return `<div class="pj-ctl"><a class="pj-cb" href="/admin">← Back to admin</a>
+    <span class="seg pj-seg">${b('auto', 'Auto' + (PJ.mode === 'auto' ? ' · ' + PJ_NAMES[m] : ''))}${b('join', 'Join')}${b('work', 'Progress')}${b('results', 'Results')}</span>
+    ${m === 'results' ? `<button class="pj-cb ${PJ.types ? 'on' : ''}" data-act="pjtypes">${PJ.types ? 'Hide' : 'Show'} deliberation types</button>` : ''}
+    <button class="pj-cb" data-act="pjfull"><i class="ic ic-screen"></i>${document.fullscreenElement ? 'Exit full screen' : 'Full screen'}</button>${Date.now() - (PJ.fsHint || 0) < 6000 ? '<span class="pj-hint">This browser blocked it. Press F11.</span>' : ''}</div>`;
+}
+const pjBanner = st => st.broadcast ? `<div class="pj-banner"><i class="ic ic-mega"></i>${esc(st.broadcast)}</div>` : '';
+function pjJoin(st){
+  return `<div class="pj pj-join"><div class="pj-kick">Join the session</div>
+    <div class="pj-joinrow"><div id="qr"></div><div class="pj-how"><div class="pj-l">Scan the code, or go to</div><div class="pj-url">${esc(location.host)}</div>
+      <div class="pj-l">and type</div><div class="pj-code">${esc(st.settings.class_code)}</div></div></div>
+    <div class="pj-count"><b>${st.joined}</b> ${st.joined === 1 ? 'person has' : 'people have'} joined</div>${pjBanner(st)}</div>`;
+}
+function pjWork(st){
+  const R = st.settings.rounds, tot = 2 * R + 3, T = st.teams, left = T.length - st.finished;
+  const where = {card:0, write:0, wait:0, final:0, survey:0, done:0}; let sum = 0, n = 0;
+  T.forEach(t => t.steps.forEach(s => { sum += pjStepIdx(s, R) / tot; n++; const k = s.startsWith('post') ? 'write' : s.startsWith('wait') ? 'wait' : s; if (k in where) where[k]++; }));
+  if (PJ.lastFin != null && st.finished > PJ.lastFin){
+    PJ.toast = left === 0 ? 'Every team is done!' : st.finished === 1 ? 'The first team just finished!' : st.finished * 2 >= T.length && (st.finished - 1) * 2 < T.length ? 'Halfway there!' : `Another team finished. ${left} to go!`;
+    PJ.toastAt = Date.now();
+  }
+  PJ.lastFin = st.finished;
+  const W = [['card','Reading the brief'],['write','Writing'],['wait','Waiting for teammates'],['final','Final decision'],['survey','Survey'],['done','Done']];
+  return `<div class="pj pj-work">
+    ${Date.now() - PJ.toastAt < 8000 ? `<div class="pj-toast"><i class="ic ic-check"></i>${PJ.toast}</div>` : ''}
+    <div class="pj-big">${st.finished} of ${T.length} teams finished</div>
+    <div class="pj-sub">${left ? `${left} team${left === 1 ? '' : 's'} still working. Keep going!` : 'Every team is done. Thank you!'}</div>
+    <div class="pj-bar"><i style="width:${n ? sum / n * 100 : 0}%"></i></div><div class="pj-barl"><span>Class progress</span><b>${pjPct(n ? sum / n : 0)}</b></div>
+    <div class="pj-where">${W.map(([k, l]) => `<span><b>${where[k]}</b>${l}</span>`).join('')}</div>
+    <div class="pj-teams">${T.map(t => { const p = t.steps.length ? t.steps.reduce((a, s) => a + pjStepIdx(s, R), 0) / (t.steps.length * tot) : 0;
+      return `<div class="pj-team ${t.done ? 'done' : ''}"><span>${t.done ? '<i class="ic ic-check"></i>' : ''}Team ${t.id}</span><i style="--p:${Math.round(p * 100)}%"></i></div>`; }).join('')}</div>
+    ${left ? `<div class="pj-tip"><i class="ic ic-flag"></i><span>${PJ_TIPS[Math.floor(Date.now() / 12000) % PJ_TIPS.length]}</span></div>` : ''}
+    ${pjBanner(st)}<div class="pj-clock">Session time ${st.clock == null ? '0:00' : fmtT(st.clock)}</div></div>`;
+}
+function pjResults(st){
+  const D = PJ.charts;
+  if (!D) return '<div class="pj"><div class="pj-sub">Loading the results…</div></div>';
+  const all = D.conds.flatMap(c => c.teams.map(t => ({...t, c})));
+  if (!all.length) return `<div class="pj"><div class="pj-big">Results show up here</div><div class="pj-sub">as soon as the first team finishes.</div></div>`;
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const avg = mean(all.map(t => t.frac)), best = Math.max(...all.map(t => t.frac));
+  const facts = all.reduce((a, t) => a + t.facts, 0), used = all.reduce((a, t) => a + t.steps.actioned, 0);
+  const fh = all.filter(t => t.felt_heard != null).map(t => t.felt_heard);
+  const rows = [['Best possible design', 1, 'top'], ['Best team in the room', best, ''], ['Your class, on average', avg, 'you'], ['Best one engineer could do alone', D.single_frac, ''], ['Using only the shared table', D.naive_frac, '']].sort((a, b) => b[1] - a[1]);
+  const opt = (D.opt_set || []).map(id => FEAT[id]).filter(Boolean), cost = opt.reduce((a, f) => a + f.price, 0);
+  const notAll = D.totals.finished < D.totals.teams;
+  return `<div class="pj pj-res"><div class="pj-kick">How did your class do?</div>
+    <div class="pj-big">Your designs reached <span class="pj-hl">${pjPct(avg)}</span> of the best possible design</div>
+    ${notAll ? `<div class="pj-sub">So far: ${D.totals.finished} of ${D.totals.teams} teams finished.</div>` : ''}
+    <div class="pj-cmp">${rows.map(([l, v, k]) => `<div class="pj-cr ${k}"><span>${l}</span><div class="pj-cb2"><i style="width:${v * 100}%"></i></div><b>${pjPct(v)}</b></div>`).join('')}</div>
+    <div class="pj-dots"><div class="pj-dl">Each dot is one team</div><div class="pj-scale">${all.map(t => `<i style="left:${t.frac * 100}%" title="Team ${t.id}"></i>`).join('')}<span style="left:0">0%</span><span style="left:50%">50%</span><span style="left:100%">100%</span></div></div>
+    <div class="pj-facts"><div class="pj-fact"><b>${facts ? pjPct(used / facts) : '—'}</b><span>of everyone's secret test results ended up in a final design</span></div>
+      ${fh.length ? `<div class="pj-fact"><b>${pjPct(mean(fh))}</b><span>of you felt heard by your team</span></div>` : ''}
+      <div class="pj-fact"><b>${all.length}</b><span>team${all.length === 1 ? '' : 's'} counted</span></div></div>
+    <div class="pj-lesson">Each of you had test results that no one else on your team had. The best design needs all of them.</div>
+    ${opt.length ? `<div class="pj-opt"><div class="pj-dl">The best possible design · $${cost}</div><div class="pj-chips">${opt.map(f => `<span><b>${f.id}</b>${esc(f.name)}</span>`).join('')}</div></div>` : ''}
+    ${PJ.types ? `<div class="pj-types">${D.conds.filter(c => c.teams.length).map(c => `<div class="pj-cr"><span><i class="pj-sw" style="background:${c.color}"></i>${esc(c.label)} · ${c.teams.length} team${c.teams.length === 1 ? '' : 's'}</span><div class="pj-cb2"><i style="width:${mean(c.teams.map(t => t.frac)) * 100}%;background:${c.color}"></i></div><b>${pjPct(mean(c.teams.map(t => t.frac)))}</b></div>`).join('')}</div>` : ''}
+    <div class="pj-thanks">Thank you for taking part!</div></div>`;
+}
+/* The control bar lives outside #app so the once-a-second redraw never swaps a button out from under a click. */
+function pjCtl(st){
+  let c = document.getElementById('pjctl');
+  if (!st){ if (c) c.remove(); return; }
+  if (!c){ c = document.createElement('div'); c.id = 'pjctl'; document.body.appendChild(c); }
+  const h = pjControls(st); if (c._h !== h){ c.innerHTML = h; c._h = h; }
+}
+function pjPage(st){
+  const m = pjMode(st);
+  return m === 'join' ? pjJoin(st) : m === 'results' ? pjResults(st) : pjWork(st);
+}
+(function(){   // projector controls show while the mouse moves, then fade so they are not on the big screen
+  if (MODE !== 'projector') return;
+  let t = null; const wake = () => { document.body.classList.add('pj-awake'); clearTimeout(t); t = setTimeout(() => document.body.classList.remove('pj-awake'), 3000); };
+  document.addEventListener('mousemove', wake); document.addEventListener('keydown', wake);
+  document.addEventListener('fullscreenchange', () => render());
+  if (document.body) wake(); else document.addEventListener('DOMContentLoaded', wake);
+})();
 function projectorBody(st){
   if (st.lobby_open) return `<div class="card proj"><div class="muted" style="font-size:22px">Go to <b>${esc(location.host)}</b> and enter</div><div class="big">${esc(st.settings.class_code)}</div><div id="qr"></div><div class="huge">${st.joined} joined</div></div>`;
   return `<div class="card proj"><div class="huge">${st.finished} of ${st.teams.length} teams done</div><div class="muted" style="font-size:22px">Session time ${st.clock == null ? '' : fmtT(st.clock)}</div>
@@ -987,11 +1171,38 @@ function timerSetup(t){
   const f = (k, l) => `<label>${l}<span class="tm-in"><input type="number" id="tm_${k}" min="0.5" max="30" step="0.5" value="${t[k]}"> min</span></label>`;
   const total = t.card + t.round1 + t.round * Math.max(0, ((A.st && A.st.settings.rounds) || 2) - 1) + ((A.st && A.st.settings.rounds) || 2) + t.final + t.survey;
   return `<div class="card"><h3 style="margin-top:0">Step timers${ti('timers')}</h3>
-    <p class="small muted">Each player sees a countdown for the step they are on. At 1 minute left and at time's up they get a pop-up and the timer changes color. Nobody is cut off. You can change these at any time.</p>
+    <p class="small muted">Nobody is cut off when time runs out.</p>
     <label class="chip"><input type="checkbox" id="tm_on" ${t.on ? 'checked' : ''}> Show timers and automatic reminders</label>
     <div class="tm-grid">${f('card','Read brief')}${f('round1','Round 1')}${f('round','Later rounds')}${f('final','Final decision')}${f('survey','Survey')}</div>
     <p class="small muted">Whole session: about <b>${total} min</b> including about 1 min per round for the Mediator.</p>
     <button class="mini dark" data-act="savetimers">Save timers</button></div>`;
+}
+/* Setup tab: pick the Mediator for this session (stand-in or an ARC model). Locked once teams exist. */
+function mediatorCard(st){
+  const M = A.models;
+  const head = `<div class="card"><h3 style="margin-top:0">Mediator${ti('mediator')}</h3><p class="small">Running now: <b>${esc(st.mediator)}</b></p>`;
+  if (!M) return head + (ARCH ? '</div>' : '<p class="small muted">Loading the model list…</p></div>');
+  const listed = M.models || [], sim = new Set(M.simulated || []), cur = M.current;
+  const opts = [M.standin, ...(cur !== M.standin && !listed.includes(cur) ? [cur] : []), ...listed];
+  const pick = A.medPick && opts.includes(A.medPick) ? A.medPick : cur;
+  const label = id => id === M.standin ? 'Stand-in (no AI)' : id + (sim.has(id) ? ' · used in the simulation' : '') + (id === cur ? ' · current' : '');
+  const info = id => { if (id === M.standin) return 'Fixed rules, no AI. Nothing is sent anywhere.';
+    const b = M.catalog[id] || M.unknown;
+    return `Up to ${b.max_tokens} tokens per reply, reasoning included. Waits up to ${b.timeout} s per request.`
+      + (sim.has(id) ? ' The simulation ran this model on this task.' : M.catalog[id] ? ' Not tried on this task yet.' : ' Not in the model table, so it gets safe defaults. Not tried on this task yet.')
+      + (listed.length && !listed.includes(id) ? ' ARC does not list this model right now.' : ''); };
+  const T = A.medTest;
+  return head + `${!M.available ? '<p class="small muted">This server has no ARC key, so only the stand-in can run. Add ARC_API_KEY and ARC_API_BASE to team_session/.env and restart the server.</p>' : ''}
+    ${M.error ? `<div class="ai-verdict bad"><i class="ic ic-alert"></i><span><b>Could not get ARC's model list.</b> ${esc(M.error)}</span></div>` : ''}
+    ${M.note ? `<div class="ai-verdict bad"><i class="ic ic-alert"></i><span>${esc(M.note)}</span></div>` : ''}
+    <div class="inline" style="margin-top:8px"><select id="medsel" aria-label="Mediator model" ${M.locked ? 'disabled' : ''}>${opts.map(id => `<option value="${esc(id)}" ${id === pick ? 'selected' : ''}>${esc(label(id))}</option>`).join('')}</select>
+      <button class="mini" data-act="medtest" ${A.medBusy ? 'disabled' : ''}><i class="ic ic-pulse"></i>${A.medBusy ? 'Testing…' : 'Test this model'}</button>
+      <button class="mini dark" data-act="meduse" ${M.locked || pick === cur ? 'disabled' : ''}>Use this model</button>
+      ${M.available ? '<button class="mini" data-act="medrefresh">Refresh list</button>' : ''}</div>
+    <p class="small muted">${esc(info(pick))}</p>
+    ${T && T.model === pick ? `<div class="ai-verdict ${T.ok ? 'ok' : 'bad'}"><i class="ic ${T.ok ? 'ic-check' : 'ic-alert'}"></i><span>${T.standin ? esc(T.note || '')
+      : T.ok ? `<b>Working.</b> ${esc(T.model_returned || T.model)} answered in ${aiSec(T.seconds)}${T.finish_reason ? `, finish: ${esc(T.finish_reason)}` : ''}.` : `<b>Not working.</b> ${esc(T.error || 'No answer.')}`}</span></div>` : ''}
+    <p class="small muted">${M.locked ? 'Locked because teams have been formed. Start a new session to change it.' : 'Pick it before forming teams. It stays the same for the whole session and is saved with the data.'}</p></div>`;
 }
 function adminSetup(st){
   const s = st.settings, locked = !st.lobby_open, keys = ['caucus','facilitated','summary_only','unmediated'];
@@ -1003,32 +1214,58 @@ function adminSetup(st){
       <div class="inline">If fewer than <input type="number" id="thresh" min="0" max="500" value="${s.threshold}" ${locked ? 'disabled' : ''}> students join, use only:</div>
       <div class="inline" style="margin-top:6px">${keys.map(c => `<label class="chip"><input type="checkbox" class="fb" value="${c}" ${s.fallback.includes(c) ? 'checked' : ''} ${locked ? 'disabled' : ''}> ${condLabel(c)}</label>`).join('')}</div>
       <button class="mini dark" data-act="savesetup" style="margin-top:10px" ${locked ? 'disabled' : ''}>Save settings</button>
-      <p class="small muted">${locked ? 'Locked because teams have been formed.' : 'The simulation uses 3 rounds. The class plan uses 2.'}</p></div>
+      <p class="small muted">${locked ? 'Locked because teams have been formed.' : ''}</p></div>
     ${timerSetup(s.timers || TIMER_DEFAULTS)}
-    <div class="card"><h3 style="margin-top:0">Mediator${ti('mediator')}</h3><p class="small">Running: <b>${esc(st.mediator)}</b>. Set MEDIATOR=llm on the server to use a real model (see README).</p></div>
-    <div class="card"><h3 style="margin-top:0">New session${ti('new_session')}</h3><p class="small muted">Starts a fresh session with a new ID and an empty lobby. Everything from this session stays saved in the database.</p>
+    ${mediatorCard(st)}
+    <div class="card"><h3 style="margin-top:0">New session${ti('new_session')}</h3>
       <button class="mini" data-act="newsession">Start a new session</button></div>`;
+}
+/* Results: the four steps as one small card per type (bars step down from Spoken to Actioned),
+   and the extra checks as a shaded grid. Both fit the page width, so nothing scrolls sideways.
+   rows = [{label, cond, n, s:[spoken, heard, integrated, actioned], ex:{mentioned, to_mediator, relayed, heard_recalled, recalled, final_follows}}]
+   (an ex value of null means the check does not apply to that type) */
+const STEP_NAMES4 = [['Spoken','spoken'], ['Heard','heard'], ['Integrated','integrated'], ['Actioned','actioned']];
+const EXTRA_CHECKS = [['Mentioned','mentioned','mentioned'], ['To Mediator','to_mediator','to_mediator'], ['Relayed by AI','relayed','relayed'],
+  ['Heard + recalled','heard_recalled','heard_recalled'], ['Recalled','recalled','recalled'], ['Final follows','final_follows','final_follows']];
+function stepsBlock(rows, tip, hide){
+  if (!rows.length) return {steps:'<p class="muted">No finished teams yet.</p>', extra:''};
+  const pc = (a, n) => n ? Math.round(a / n * 100) : 0;
+  const col = r => hide ? '#5b6070' : (CONDC[r.cond] || '#5b6070');
+  const legend = `<div class="fn-legend">${STEP_NAMES4.map(([l, k], i) => `<span><b>${i + 1}</b>${l}${tip(k)}</span>`).join('<i class="fn-arrow"></i>')}</div>`;
+  const cards = rows.map(r => `<div class="fn-card" style="--cc:${col(r)}">
+      <div class="fn-h"><i class="fn-dot"></i><b>${esc(r.label)}</b><small>${r.n} finding${r.n === 1 ? '' : 's'}</small></div>
+      <div class="fn-cols">${r.s.map((v, i) => { const p = pc(v, r.n), drop = i ? r.s[i - 1] - v : 0;
+        return `<div class="fn-col" title="${STEP_NAMES4[i][0]}: ${v} of ${r.n}"><span class="fn-v">${p}%</span><div class="fn-bar"><i style="height:${Math.max(p, 2)}%;--d:${i * 70}ms"></i></div>
+          <small>${STEP_NAMES4[i][0]}</small><em>${v} of ${r.n}${drop > 0 ? ` <u>−${drop}</u>` : ''}</em></div>`; }).join('')}</div>
+      <div class="fn-foot">In the final design: <b>${pc(r.s[3], r.n)}%</b></div></div>`).join('');
+  const cols = `minmax(118px,1.3fr) repeat(${rows.length}, minmax(0,1fr))`;
+  const grid = `<div class="hm" style="grid-template-columns:${cols}">
+      <div class="hm-h"></div>${rows.map(r => `<div class="hm-h hm-t" style="--cc:${col(r)}" title="${esc(r.label)}"><i class="fn-dot"></i>${esc(r.label)}</div>`).join('')}
+      ${EXTRA_CHECKS.map(([l, k, t]) => `<div class="hm-r">${l}${tip(t)}</div>${rows.map(r => { const v = r.ex[k];
+        if (v == null) return '<div class="hm-cell na" title="Does not apply to this type">—</div>';
+        const p = pc(v, r.n);
+        return `<div class="hm-cell ${p >= 55 ? 'hi' : ''}" style="--p:${p}" title="${l}: ${v} of ${r.n}"><b>${p}%</b><small>${v} of ${r.n}</small></div>`; }).join('')}`).join('')}</div>`;
+  return { steps: legend + `<div class="fn-grid">${cards}</div>`, extra: grid };
 }
 function adminResults(){
   const R = A.results; if (!R) return '<p class="muted">Loading…</p>';
   const f1 = (x, d) => x == null ? '—' : (+x).toFixed(d || 0);
   const pts = x => x == null ? '—' : `${(+x).toFixed(0)}`;
+  const SB = stepsBlock(R.by_condition.map(c => ({label:c.label, cond:c.cond, n:c.facts, s:[c.spoken, c.heard, c.integrated, c.actioned],
+    ex:{mentioned:c.mentioned, to_mediator:c.cond === 'caucus' ? c.disclosed_to_mediator : null, relayed:c.cond !== 'unmediated' ? c.relayed_by_ai : null,
+        heard_recalled:c.heard_and_recalled, recalled:c.recalled, final_follows:c.final_follows}})), ti, A.hideCond);
   return `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">Which teams count</h3>
       <span><label class="chip"><input type="checkbox" id="consentonly" ${A.consentOnly ? 'checked' : ''}> Consenting teams only</label>${ti('consent_only')}</span></div>
       <p class="small muted">Spare and late teams are left out of these tables, but they are in the exports and the database.
       ${R.excluded_leak ? `<b style="color:var(--warn)">${R.excluded_leak} team(s) said they talked outside the app.</b> Their chat log may be missing part of the conversation; see the "Talked out loud" flag below.` : ''}</p></div>
     <div class="card"><h3 style="margin-top:0">The four steps, by deliberation type${ti('steps')}</h3>
-      <p class="small muted">Each team has 9 private findings. This table follows them through four steps. A finding only counts at a step if it also passed the step before, so the numbers can only go down from left to right.</p>
-      <div class="defs"><div><b>1. Spoken</b>Its owner said it, with the right direction (worth more or less).</div><div><b>2. Heard</b>It was on a teammate's screen for 2+ seconds. In caucus, only Mediator cards count.</div><div><b>3. Integrated</b>Afterward a teammate repeated it, changed picks its way, or the Mediator carried it.</div><div><b>4. Actioned</b>The final design follows it.</div></div>
-      <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th>1. Spoken${ti('spoken')}</th><th>2. Heard${ti('heard')}</th><th>3. Integrated${ti('integrated')}</th><th>4. Actioned${ti('actioned')}</th></tr></thead><tbody>
-      ${R.by_condition.map(c => `<tr><td><b>${c.label}</b></td><td>${fb(c.spoken, c.facts)}</td><td>${fb(c.heard, c.facts)}</td><td>${fb(c.integrated, c.facts)}</td><td>${fb(c.actioned, c.facts)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No finished teams yet.</td></tr>'}</tbody></table></div>
+      <p class="small muted">A finding counts at a step only if it passed the step before.</p>
+      ${SB.steps}
       <h3>Extra checks${ti('extra')}</h3>
-      <p class="small muted">Each of these is counted on its own. It does not depend on any other step. A dash means it does not apply to that type.</p>
-      <div class="defs"><div><b>Mentioned</b>Named at all, even with no direction.</div><div><b>To Mediator</b>Said privately to the Mediator (caucus only).</div><div><b>Relayed by AI</b>The Mediator passed it on to the team.</div><div><b>Heard + recalled</b>Heard, and a teammate also ticked it in the survey. A stricter "heard".</div><div><b>Recalled</b>A teammate ticked it in the survey list.</div><div><b>Final follows</b>The final design follows it, however it got there.</div></div>
-      <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th>Mentioned${ti('mentioned')}</th><th>To Mediator${ti('to_mediator')}</th><th>Relayed by AI${ti('relayed')}</th><th>Heard + recalled${ti('heard_recalled')}</th><th>Recalled${ti('recalled')}</th><th>Final follows${ti('final_follows')}</th></tr></thead><tbody>
-      ${R.by_condition.map(c => `<tr><td><b>${c.label}</b></td><td>${fb(c.mentioned, c.facts)}</td><td>${c.cond === 'caucus' ? fb(c.disclosed_to_mediator, c.facts) : '—'}</td><td>${c.cond !== 'unmediated' ? fb(c.relayed_by_ai, c.facts) : '—'}</td><td>${fb(c.heard_and_recalled, c.facts)}</td><td>${fb(c.recalled, c.facts)}</td><td>${fb(c.final_follows, c.facts)}</td></tr>`).join('')}</tbody></table></div></div>
+      <p class="small muted">Each is counted on its own. A dash means it does not apply.</p>
+      ${SB.extra}</div>
     <div class="card"><h3 style="margin-top:0">Points lost at each step (average per team)${ti('points')}</h3>
-      <p class="small muted">The plan's points method. Best possible is ${R.opt.v} points; the shared table alone gives ${R.naive.v}. At each step we find the best answer using only the findings that made it that far; the drop is what that step lost. "Final pick" is the best answer with what the team had, minus its real answer, split into wrong guesses the team acted on and budget math or other choices. A small negative number means a team got lucky.</p>
+      <p class="small muted">Best possible is ${R.opt.v} points; the shared table alone gives ${R.naive.v}. Below zero means a team got lucky.</p>
       <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Type</th><th class="num">Not spoken${ti('lost_spoken')}</th><th class="num">Not heard${ti('lost_heard')}</th><th class="num">Not integrated${ti('lost_integrated')}</th><th class="num">Final pick: wrong info${ti('lost_wrong')}</th><th class="num">Final pick: budget / other${ti('lost_other')}</th><th class="num">Final score${ti('final_score')}</th><th class="num">Wrong claims acted on${ti('wrong_claims')}</th></tr></thead><tbody>
       ${R.by_condition.map(c => `<tr><td><b>${c.label}</b></td><td class="num">${pts(c.lost_not_spoken)}</td><td class="num">${pts(c.lost_not_heard)}</td><td class="num">${pts(c.lost_not_integrated)}</td><td class="num">${pts(c.lost_to_wrong_info)}</td><td class="num">${pts(c.lost_to_budget_math_or_other)}</td><td class="num">${pts(c.pts_final)} / ${R.opt.v}</td><td class="num">${f1(c.wrong_claims_acted_on, 1)}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="card"><h3 style="margin-top:0">Design outcome by deliberation type${ti('outcome')}</h3>
@@ -1036,16 +1273,15 @@ function adminResults(){
       ${R.by_condition.map(c => `<tr><td><b>${c.label}</b></td><td class="num">${c.done} / ${c.teams}</td><td class="num">${f1(c.pct_best)}${c.pct_best == null ? '' : '%'}</td><td class="num">${f1(c.pooling, 2)}</td><td class="num">${f1(c.gems, 1)}</td><td class="num">${f1(c.decoys, 1)}</td><td class="num">${f1(c.accepts, 1)}</td><td class="num">${c.talked_outside_app} teams</td></tr>`).join('')}</tbody></table></div></div>
     <div class="card"><h3 style="margin-top:0">Downloads${ti('downloads')}</h3><div class="inline">
       <a class="mini" href="${exp('results.csv')}">Results CSV (with points)</a>${ti('results_csv')}<a class="mini" href="${exp('facts.csv')}">Findings CSV</a>${ti('facts_csv')}<a class="mini" href="${exp('messages.csv')}">Messages CSV</a>${ti('messages_csv')}
-      <a class="mini" href="${exp('participants.csv')}">Participants CSV</a>${ti('participants_csv')}<a class="mini" href="${exp('events.csv')}">All events CSV</a>${ti('events_csv')}<a class="mini" href="${exp('all.json')}">Everything (JSON)</a>${ti('json')}
+      <a class="mini" href="${exp('participants.csv')}">Participants CSV</a>${ti('participants_csv')}<a class="mini" href="${exp('events.csv')}">All events CSV</a>${ti('events_csv')}<a class="mini" href="${exp('ai_calls.csv')}">AI calls CSV</a>${ti('ai_calls_csv')}<a class="mini" href="${exp('all.json')}">Everything (JSON)</a>${ti('json')}
       <a class="mini dark" href="${exp('database.sqlite3')}">Whole database (.sqlite3)</a>${ti('db')}</div>
       <h3>For the two human coders${ti('coders')}</h3><div class="inline"><a class="mini dark" href="${exp('coding_sample.csv')}">Coding sheet: random 20% of messages</a>${ti('coding_sample')}<a class="mini" href="${exp('coding_all.csv')}">Coding sheet: all messages</a>${ti('coding_all')}</div>
       <p class="small muted">Each row shows the app's codes next to blank columns for coder 1 and coder 2. The 20% sample is the same every time you download it for this session. After coding, fix the Findings CSV where the coders disagree with the app, and re-run <code>analysis/points_from_findings.py</code> to get corrected points.</p>
       <p class="small muted">CSV and JSON follow the "consenting teams only" switch. The database file has everything from every session, including students who said no, so keep it private.</p></div>
     <div class="card"><h3 style="margin-top:0">Each team${ti('each_team')}</h3>
-      <p class="small muted">One row per finished team. Click a row to open that team's log. A negative number under "Points lost" means the team got lucky.</p>
       ${R.teams.length ? `${sortBar('res', RES_OPTS)}<div class="tr-list">${sortRows('res', R.teams.map(x => ({team:x.team, cond:x.condition, condText:condLabel(x.condition), set:String(x.final_set || '').split(' ').filter(Boolean), score:x.true_value, opt:R.opt.v, facts:x.facts,
         steps:[x.spoken, x.heard, x.integrated, x.actioned], lostShare:x.lost_not_spoken + x.lost_not_heard + x.lost_not_integrated, lostFinal:x.lost_at_final_pick, wrong:x.wrong_claims_acted_on ? `${x.lost_to_wrong_info} from wrong info` : '',
-        flags:[x.talked_outside_app ? 'Talked out loud' : '', x.closed_by_researcher ? 'Round closed' : ''].filter(Boolean)})), RES_OPTS, RES_GET).map(x => teamResultRow(x, A.hideCond)).join('')}</div>` : '<p class="muted">No team has finished yet.</p>'}</div>`;
+        flags:[x.talked_outside_app ? 'Talked out loud' : '', x.closed_by_researcher ? 'Round closed' : '', x.mediator_fallbacks ? 'Stand-in answered' : ''].filter(Boolean)})), RES_OPTS, RES_GET).map(x => teamResultRow(x, A.hideCond)).join('')}</div>` : '<p class="muted">No team has finished yet.</p>'}</div>`;
 }
 function teamView(){
   const T = A.team;
@@ -1054,14 +1290,13 @@ function teamView(){
   <div class="card small"><b>${condLabel(T.cond)}:</b> ${esc(T.about)}</div>
   <div class="card"><h3 style="margin-top:0">Findings${ti('team_facts')}</h3><div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Finding</th><th>Feature</th><th>Mentioned${ti('mentioned')}</th><th>1. Spoken${ti('spoken')}</th><th>To Mediator${ti('to_mediator')}</th><th>Relayed${ti('relayed')}</th><th>2. Heard${ti('heard')}</th><th>Recalled${ti('recalled')}</th><th>3. Integrated${ti('integrated')}</th><th>4. Actioned${ti('actioned')}</th><th>Final follows${ti('final_follows')}</th></tr></thead>
     <tbody>${T.facts.map(x => `<tr><td><b>${x.fact}</b></td><td>${x.feature} (${x.direction})</td>${['mentioned','spoken','disclosed_to_mediator','relayed_by_ai','heard','recalled','integrated','actioned','final_follows'].map(k => `<td>${x[k] === 1 ? '✓' : x[k] === '' ? '—' : '·'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
-  <div class="card"><h3 style="margin-top:0">Everything saved${ti('team_log')}</h3><p class="small muted">"Seen by" = on that person's screen 2+ seconds.</p>
+  <div class="card"><h3 style="margin-top:0">Everything saved${ti('team_log')}</h3>
     <div style="overflow-x:auto"><table class="admtbl"><thead><tr><th>Time</th><th>Round</th><th>Who</th><th>Kind</th><th>Text</th><th>Set</th><th>Seen by${ti('seen_by')}</th></tr></thead><tbody>
     ${T.log.map(e => `<tr><td class="num">${e.t}</td><td>${e.round}</td><td>${esc(e.label)}${e.pid ? `<div class="pseudo"><a href="#" data-act="person" data-pid="${e.pid}">${e.pid}</a></div>` : ''}</td><td>${e.kind}${e.private ? ' · private' : ''}${e.mediator_error ? ' · <span class="st warn">fallback</span>' : ''}</td><td style="white-space:pre-wrap">${esc(e.text)}</td><td>${(e.set || []).join(' ')}</td><td>${(e.seen_by || []).join(' ')}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 function peopleList(){
   const q = A.q.trim().toUpperCase(), P = (A.people || []).filter(p => matchQ(A.q, [p.pid, p.label, p.team != null ? 'team ' + p.team : 'no team', A.hideCond ? '' : condLabel(p.cond), p.bot ? 'simulated sim' : 'real student', p.persona, STEP_NAMES(p.step), p.consent == null ? '' : p.consent ? 'consent yes' : 'no consent']));
   return `<div class="card"><div class="inline" style="justify-content:space-between"><h3 style="margin:0">People · ${(A.people || []).length}${ti('people')}</h3><a class="mini" href="${exp('events.csv')}">Download all events (CSV)</a></div>
-    <p class="small muted">Click a person to see everything they did, in order, with times.</p>
     <input type="text" id="peopleq" placeholder="Search anything on a row: ID, role, nickname, team, type, step. Try caucus, team 4 or mechanical" value="${esc(A.q)}" style="margin-bottom:4px">${ppLegend()}${sortBar('people', PP_OPTS)}
     <div class="pp-list">${sortRows('people', P.map(p => ({...p, condText:condLabel(p.cond), step:STEP_NAMES(p.step), inApp:p.in_app})), PP_OPTS, PP_GET).map(p => personRow(p, A.hideCond)).join('') || '<p class="muted">No one yet.</p>'}</div></div>`;
 }
@@ -1344,12 +1579,11 @@ function wPicker(){
 }
 function wGo(pid){ A.watchPid = pid; A.wstats = null; A.wRendered = false; render(); refreshAdmin(); }
 function adminWatch(){
-  if (A.wall && !A.wall.players.length) return emptyState('Nobody to watch yet', 'Players show up here as soon as teams are formed. You can watch anyone, real or simulated, and see exactly what is on their screen.', '<button class="mini" data-act="admtab" data-tab="live">Go to the session</button><button class="mini dark" data-act="practice">Start a practice run</button>');
+  if (A.wall && !A.wall.players.length) return emptyState('Nobody to watch yet', 'Players show up here once teams are formed.', '<button class="mini" data-act="admtab" data-tab="live">Go to the session</button><button class="mini dark" data-act="practice">Start a practice run</button>');
   const P = (A.wall && A.wall.players) || [], teams = [...new Set(P.map(p => p.team))].sort((a, b) => a - b), f = A.wf;
   const conds = [...new Set(P.map(p => p.cond))];
   return `<div class="card"><div class="inline" style="justify-content:space-between;flex-wrap:wrap;gap:10px"><h3 style="margin:0">Watch players${ti('watch')}</h3>
       <span class="seg"><button data-act="wmode" data-v="screen" class="${A.watchMode === 'screen' ? 'on' : ''}">One screen</button><button data-act="wmode" data-v="wall" class="${A.watchMode === 'wall' ? 'on' : ''}">Wall (everyone)</button></span></div>
-    <p class="small muted" style="margin:6px 0 10px">You see exactly what the player sees, live. Dark "Admin" labels and the top bar are extra info only you get. You can switch their tabs to look around, but you can't type or click for them.</p>
     <div class="fd-filters"><select id="wf-cond"><option value="">All conditions</option>${conds.map(c => `<option value="${c}" ${f.cond === c ? 'selected' : ''}>${A.hideCond ? 'Type ' + (conds.indexOf(c) + 1) : condLabel(c)}</option>`).join('')}</select>
       <select id="wf-kind"><option value="">Real and simulated</option><option value="real" ${f.kind === 'real' ? 'selected' : ''}>Real students only</option><option value="sim" ${f.kind === 'sim' ? 'selected' : ''}>Simulated only</option></select>
       <select id="wf-team"><option value="">All teams</option>${teams.map(t => `<option value="${t}" ${f.team === String(t) ? 'selected' : ''}>Team ${t}</option>`).join('')}</select>
@@ -1369,8 +1603,16 @@ let autoTimer = null;
 /* Big admin clock: ticks every second without redrawing the page */
 setInterval(() => { const el = document.getElementById('admclock'); if (el && A.st && A.st.clock != null) el.textContent = fmtT(A.st.clock + (Date.now() - A.stAt) / 1000 * (A.st.clock_rate || 0)); }, 1000);
 function adminClick(which, b){
+  if (which === 'pjmode'){ PJ.mode = b.dataset.v; try { localStorage.setItem('tds_pj_mode', PJ.mode); } catch(_){} PJ.chartsAt = 0; return refreshAdmin(); }
+  if (which === 'pjtypes'){ PJ.types = !PJ.types; return render(); }
+  if (which === 'pjfull'){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => { PJ.fsHint = Date.now(); render(); setTimeout(render, 6000); }); return; }
   switch (which){
     case 'noop': return;
+    case 'aitest': if (ARCH) return; window.AI_TEST_BUSY = true; render(); return api('/api/admin/ai_test', {}).then(r => { window.AI_TEST_LOCAL = r; }).catch(e => { window.AI_TEST_LOCAL = {ok:false, error:e.message}; }).finally(() => { window.AI_TEST_BUSY = false; refreshAdmin(); });
+    case 'medtest': { const sel = document.getElementById('medsel'), model = sel ? sel.value : null; A.medPick = model; A.medBusy = true; A.medTest = null; render();
+      return api('/api/admin/ai_test', {model}).then(r => { A.medTest = r; }).catch(e => { A.medTest = {ok:false, model, error:e.message}; }).finally(() => { A.medBusy = false; render(); }); }
+    case 'meduse': { const sel = document.getElementById('medsel'); if (!sel) return; const model = sel.value; A.models = null; A.medPick = null; return adm('mediator', {model}); }
+    case 'medrefresh': A.models = null; return refreshAdmin();
     case 'ain': { const U = UIS(), cur = parseInt(U.aiN, 10) || +((document.getElementById('ain') || {}).value) || 90; U.aiN = Math.max(3, Math.min(600, cur + (+b.dataset.d))); return render(); }
     case 'sortby': sortClick(b); return render();
     case 'savesess': { const nm = (document.getElementById('savename') || {}).value || ''; b.disabled = true; b.textContent = 'Saving…';
@@ -1389,7 +1631,7 @@ function adminClick(which, b){
     case 'startfresh': if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Click again: new empty session'; return; } return adm('new_session');
     case 'practice': A.showGuide = false; GUIDE_MARK(); A.tab = 'live'; return adm('addbots', {n:PN()}).then(() => adm('autorun', {speed:15})).then(() => { A.flash = 'Practice run started at 15× speed. Follow the run sheet, then try Watch players and Charts.'; render(); setTimeout(() => { A.flash = ''; render(); }, 6000); });
     case 'gotoreport': A.tab = 'charts'; A.wRendered = false; return refreshAdmin().then(() => setTimeout(() => window.ChartExport && window.ChartExport.openBuilder(), 250));
-    case 'admtab': if (b.dataset.tab === 'setup') SETUP_MARK(); A.wRendered = false; A.tab = b.dataset.tab; A.person = null; return refreshAdmin();
+    case 'admtab': if (b.dataset.tab === 'setup'){ SETUP_MARK(); A.models = null; } A.wRendered = false; A.tab = b.dataset.tab; A.person = null; return refreshAdmin();
     case 'addbots': return adm('addbots', {n:b.dataset.n === 'pn' ? PN() : +b.dataset.n});
     case 'undobots': return adm('undobots');
     case 'clearbots': if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Click again to remove all'; return; } return adm('clearbots');
@@ -1431,12 +1673,14 @@ function render(){
     if (!CT) html = '<p class="muted">Loading…</p>';
     else if (MODE === 'student') html = renderStudent();
     else if (WATCH) html = watchPage();
-    else if (MODE === 'projector') html = !ADMIN ? '<p>Open the admin page first, in this browser.</p>' : A.st ? projectorBody(A.st) : 'Loading…';
+    else if (MODE === 'projector') html = !ADMIN ? '<a class="mini" href="/admin">← Back to admin</a><p>Open the admin page first, in this browser.</p>' : A.st ? pjPage(A.st) : 'Loading…';
     else html = renderAdmin();
     app.classList.toggle('wide', (MODE !== 'student' && !WATCH) || !!(V && V.team));
     app.innerHTML = html;
+    if (MODE === 'admin' && ADMIN) decorateSections(app);
+    if (MODE === 'projector') pjCtl(ADMIN && A.st ? A.st : null);
     const qr = document.getElementById('qr');
-    if (qr && window.QRCode && A.st){ try { new QRCode(qr, {text:location.origin + '/?code=' + encodeURIComponent(A.st.settings.class_code), width:220, height:220}); } catch(_){} }
+    if (qr && window.QRCode && A.st){ try { const qs = MODE === 'projector' ? 320 : 220; new QRCode(qr, {text:location.origin + '/?code=' + encodeURIComponent(A.st.settings.class_code), width:qs, height:qs}); } catch(_){} }
     if (MODE === 'student') observeSeen();
     if (WATCH) watchDecorate();
     if (MODE === 'admin') placeWatchFrame();
@@ -1452,6 +1696,7 @@ document.addEventListener('click', e => {
   if (MODE === 'student') studentClick(a, b); else adminClick(a, b);
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'medsel'){ A.medPick = e.target.value; A.medTest = null; return render(); }
   const t = e.target;
   if (t.id === 'wf-pick'){ if (t.value) wGo(t.value); return; }
   if (t.id === 'wf-cond' || t.id === 'wf-kind' || t.id === 'wf-team'){ A.wf[t.id.slice(3)] = t.value; return patchWatch(); }
